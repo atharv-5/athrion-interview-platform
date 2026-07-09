@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "resume_1783625904443",
+    "createdAt": "2026-07-09T19:38:24.443Z",
+    "userId": "user_mock_123",
+    "updatedAt": "2026-07-09T19:38:24.443Z",
+    "rawText": "\n\nAtharv Gehlod\nFull Stack Developer | MERN & AWS Specialist\n+91 9302053410|atharvgehlod47@gmail.com|linkedin.com/in/atharv-gehlod-02522a376|Vadodara, Gujarat, India\nPROFESSIONAL SUMMARY\nComputer Science student and Full Stack Developer specializing in the MERN stack and cloud-native architectures. I have a proven track\nrecord of building production-ready applications, including an AI-powered Smart Resume Analyzer integrating OpenRouter APIs for\nintelligent feedback. Certified in AWS Cloud Fundamentals and Language Models, I am recognized for strong analytical thinking,\ncollaborative problem-solving, and a commitment to secure-by-design development using JWT and bcrypt.\nSOFT SKILLS\nAnalytical Problem SolvingCollaborative EngineeringAdaptabilitySecurity-First MindsetTechnical Documentation\nPeer-Reviewing\nHARD SKILLS\nLanguages\nJava, JavaScript, SQL, HTML5, CSS3\nStack & Frameworks\nMERN (Mongo, Express, React, Node), Angular.js\nSecurity & Concepts\nJWT, bcrypt, Hashing, RESTful APIs, MVC\nCloud & Tools\nAWS, Git, NPM, Postman, VS Code\nKEY PROJECTS\nSmart Resume AnalyzerMERN Stack • AI-Driven\nArchitected the full system from responsive React UI to robust Node.js/Express backend and MongoDB storage.\nIntegrated OpenRouter API to provide dynamic, real-time feedback and content optimization suggestions.\nImplemented industry-standard JWT authentication and bcrypt password hashing for user data protection.\nOptimized system design following AWS Well-Architected principles to ensure reliability and scalability.\nOrchestrated end-to-end ownership from initial design to production-ready deployment.\nEDUCATION\nB.Tech in Computer Science Engineering2022 - 2026\nParul University, Vadodara, Gujarat, India\nRelevant Coursework: Data Structures & Algorithms, Web Technologies, Database Management, Cloud Computing.\nCERTIFICATIONS\nBuilding Language Models & Cloud FundamentalsAmazon Web Services (AWS)\nAWS Well-Architected FoundationsAmazon Web Services (AWS)\nAWS Cloud FundamentalsAmazon Web Services (AWS)\nLANGUAGES\nEnglish: ProfessionalHindi: Native",
+    "analysis": {
+      "candidateName": "Candidate Profile",
+      "skills": [
+        "Frontend Architecture",
+        "React.js",
+        "State Management",
+        "Backend APIs",
+        "Node.js",
+        "Express.js",
+        "RESTful Design",
+        "Database Schemas",
+        "NoSQL Datastores",
+        "Query Optimization",
+        "DevOps",
+        "Docker Containerization",
+        "Cloud Deployment (AWS)"
+      ],
+      "strengths": [
+        "Solid knowledge of software lifecycle and architecture principles.",
+        "Demonstrates structured and logical approach to software creation.",
+        "Good alignment with modern tech frameworks."
+      ],
+      "gaps": [
+        "Could elaborate further on system optimization and profiling tools.",
+        "Would benefit from more exposure to end-to-end integration test suites."
+      ],
+      "roles": [
+        "Full Stack Engineer",
+        "Backend Developer",
+        "Software Engineer"
+      ]
+    }
+  }
+]
