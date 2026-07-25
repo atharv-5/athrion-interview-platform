@@ -2,46 +2,47 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Support OPENROUTER_API_KEY (or fallback to GEMINI_API_KEY)
+const groqKey = process.env.GROQ_API_KEY;
 const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
-const isMockMode = !openrouterKey || openrouterKey.trim() === '' || openrouterKey.startsWith('your_');
 
-if (!isMockMode) {
-  console.log('🤖 AI System: OpenRouter API initialized successfully.');
+const isMockMode = (!groqKey || groqKey.trim() === '') && (!openrouterKey || openrouterKey.trim() === '');
+
+if (groqKey && groqKey.trim() !== '') {
+  console.log('⚡ AI System: GROQ LPU Speed Engine Initialized!');
+} else if (openrouterKey && openrouterKey.trim() !== '') {
+  console.log('🤖 AI System: OpenRouter API Initialized!');
 } else {
-  console.log('🤖 AI System: Running in SIMULATION (Mock) mode. (No valid API key detected).');
+  console.log('🤖 AI System: Running in SIMULATION (Mock) mode.');
 }
 
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-nano-30b-a3b:free';
-
-// Helper to call OpenRouter API via fetch
-const callOpenRouter = async (prompt) => {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+// 1. Call Groq Cloud API (Ultra-fast 500+ tokens/sec)
+const callGroqAPI = async (prompt) => {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${openrouterKey.trim()}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://athrion-resume-platform.vercel.app',
-      'X-Title': 'Athrion AI Resume Platform'
+      'Authorization': `Bearer ${groqKey.trim()}`,
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: OPENROUTER_MODEL,
+      model: 'llama-3.3-70b-versatile',
       messages: [
         {
           role: 'system',
-          content: 'You are an expert AI assistant that responds ONLY in clean JSON format without markdown ticks or conversational text.'
+          content: 'You are Athrion AI, an expert HR & Resume evaluation system. You MUST respond ONLY in valid, parseable raw JSON format. Do not use markdown codeblocks or conversational text.'
         },
         {
           role: 'user',
           content: prompt
         }
-      ]
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.2
     })
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`OpenRouter HTTP ${response.status}: ${errorText}`);
+    throw new Error(`Groq HTTP ${response.status}: ${errorText}`);
   }
 
   const data = await response.json();
@@ -49,7 +50,81 @@ const callOpenRouter = async (prompt) => {
   return cleanJsonResponse(content);
 };
 
-// Helper to clean JSON responses from LLM in case it returns markdown blocks
+// 2. Call OpenRouter API (Backup Chain)
+const callOpenRouterAPI = async (prompt) => {
+  const models = [
+    'nvidia/nemotron-3-nano-30b-a3b:free',
+    'google/gemma-4-31b-it:free',
+    'meta-llama/llama-3.3-70b-instruct:free'
+  ];
+
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openrouterKey.trim()}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://athrion-resume-platform.vercel.app',
+          'X-Title': 'Athrion AI Resume Platform'
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are Athrion AI. You MUST respond ONLY in clean JSON format without markdown codeblocks.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenRouter (${model}) HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices[0]?.message?.content;
+      return cleanJsonResponse(content);
+    } catch (err) {
+      lastError = err;
+      console.warn(`⚠️ OpenRouter model ${model} failed, trying next...`);
+    }
+  }
+
+  throw lastError || new Error('All OpenRouter models failed.');
+};
+
+// Main Unified AI Execution Pipeline with Multi-Tier Failover
+const executeAIPipeline = async (prompt) => {
+  // Priority 1: Groq API (High Speed, High Reliability)
+  if (groqKey && groqKey.trim() !== '') {
+    try {
+      return await callGroqAPI(prompt);
+    } catch (err) {
+      console.warn('⚠️ Groq API failed, failing over to OpenRouter:', err.message);
+    }
+  }
+
+  // Priority 2: OpenRouter Multi-Model Failover
+  if (openrouterKey && openrouterKey.trim() !== '') {
+    try {
+      return await callOpenRouterAPI(prompt);
+    } catch (err) {
+      console.warn('⚠️ OpenRouter chain failed:', err.message);
+    }
+  }
+
+  throw new Error('No working external AI provider available');
+};
+
+// Helper to clean JSON responses from LLM
 const cleanJsonResponse = (text) => {
   try {
     let cleaned = (text || '').trim();
@@ -70,7 +145,7 @@ export const aiService = {
    * Analyzes resume text and returns structured skills, strengths, gaps, and roles.
    */
   analyzeResume: async (text) => {
-    const getSimulationAnalysis = (text) => {
+    const getSmartLocalAnalysis = (text) => {
       const lowerText = (text || '').toLowerCase();
       const skills = [];
       const roles = [];
@@ -81,12 +156,18 @@ export const aiService = {
       }
       if (lowerText.includes('react') || lowerText.includes('vue') || lowerText.includes('angular') || lowerText.includes('frontend')) {
         skills.push('Frontend Architecture', 'React.js', 'State Management');
+        roles.push('Frontend Engineer', 'UI/UX Developer');
       }
       if (lowerText.includes('node') || lowerText.includes('express') || lowerText.includes('python') || lowerText.includes('django') || lowerText.includes('backend')) {
         skills.push('Backend APIs', 'Node.js', 'Express.js', 'RESTful Design');
+        roles.push('Backend Developer', 'Systems Engineer');
       }
       if (lowerText.includes('mongo') || lowerText.includes('sql') || lowerText.includes('postgres') || lowerText.includes('db')) {
         skills.push('Database Schemas', 'NoSQL Datastores', 'Query Optimization');
+      }
+      if (lowerText.includes('data') || lowerText.includes('python') || lowerText.includes('machine learning') || lowerText.includes('ai')) {
+        skills.push('Data Pipeline Engineering', 'Model Evaluation', 'Statistical Modeling');
+        roles.push('Data Scientist', 'AI Engineer');
       }
 
       const finalSkills = skills.length > 0 ? skills : ['Strategic Thinking', 'Project Execution', 'Domain Leadership', 'Problem Solving'];
@@ -110,14 +191,14 @@ export const aiService = {
 
     if (isMockMode) {
       console.log('🤖 AI Simulation: Analyzing Resume Text...');
-      await new Promise(r => setTimeout(r, 1000));
-      return getSimulationAnalysis(text);
+      await new Promise(r => setTimeout(r, 800));
+      return getSmartLocalAnalysis(text);
     }
 
     try {
       const prompt = `
         You are an expert resume parsing assistant. Analyze the following resume text carefully.
-        Identify the candidate's actual field (e.g. MBA/Management, Finance, Tech/Engineering, Marketing, Design, etc.).
+        Identify the candidate's actual field (e.g. MBA/Management, Finance, Tech/Engineering, Marketing, Design, Healthcare, Data Science, etc.).
         
         Return a JSON object with the following structure:
         {
@@ -125,17 +206,17 @@ export const aiService = {
           "skills": ["List of 6-10 core technologies, tools, or domain-specific skills extracted directly from the resume"],
           "strengths": ["List of 3 major candidate strengths based on their actual experience"],
           "gaps": ["List of 2 areas of improvement or skill gaps for targeting high-end roles in their specific field"],
-          "roles": ["List of 3 recommended roles tailored to their exact background (e.g., 'Financial Analyst', 'Product Manager', etc.)"]
+          "roles": ["List of 3 recommended roles tailored to their exact background"]
         }
         
         Resume Text:
         ${text}
       `;
 
-      return await callOpenRouter(prompt);
+      return await executeAIPipeline(prompt);
     } catch (err) {
-      console.warn('⚠️ OpenRouter Resume Analysis failed (using simulated fallback):', err.message);
-      return getSimulationAnalysis(text);
+      console.warn('⚠️ All AI Engines failed (using smart local fallback):', err.message);
+      return getSmartLocalAnalysis(text);
     }
   },
 
@@ -176,8 +257,8 @@ export const aiService = {
     };
 
     if (isMockMode) {
-      console.log(`🤖 AI Simulation: Generating ${numQuestions} questions for ${role} (${difficulty})...`);
-      await new Promise(r => setTimeout(r, 1000));
+      console.log(`🤖 AI Simulation: Generating ${numQuestions} questions for ${role}...`);
+      await new Promise(r => setTimeout(r, 800));
       return getSimulationQuestions(role, difficulty, type, numQuestions);
     }
 
@@ -196,13 +277,13 @@ export const aiService = {
         Make sure the questions are highly relevant, targeted, and match the specified difficulty.
       `;
 
-      const parsed = await callOpenRouter(prompt);
+      const parsed = await executeAIPipeline(prompt);
       if (!parsed || !Array.isArray(parsed.questions)) {
-        throw new Error('OpenRouter response missing a valid "questions" array');
+        throw new Error('AI response missing a valid "questions" array');
       }
       return parsed.questions;
     } catch (err) {
-      console.warn('⚠️ OpenRouter Question Generation failed (using simulated fallback):', err.message);
+      console.warn('⚠️ AI Question Generation failed (using simulation fallback):', err.message);
       return getSimulationQuestions(role, difficulty, type, numQuestions);
     }
   },
@@ -222,8 +303,7 @@ export const aiService = {
     };
 
     if (isMockMode) {
-      console.log('🤖 AI Simulation: Evaluating answer...');
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise(r => setTimeout(r, 600));
       return getSimulationEvaluation();
     }
 
@@ -243,15 +323,15 @@ export const aiService = {
         Make the assessment constructive, realistic, and detailed.
       `;
 
-      return await callOpenRouter(prompt);
+      return await executeAIPipeline(prompt);
     } catch (err) {
-      console.warn('⚠️ OpenRouter Answer Evaluation failed (using simulated fallback):', err.message);
+      console.warn('⚠️ AI Answer Evaluation failed (using simulation fallback):', err.message);
       return getSimulationEvaluation();
     }
   },
 
   /**
-   * Reviews the transcript of an entire session and compiles a detailed final assessment.
+   * Reviews transcript and compiles final assessment.
    */
   compileFinalReport: async (role, difficulty, type, qaList) => {
     const getSimulationReport = (role, difficulty, type, qaList) => {
@@ -276,8 +356,7 @@ export const aiService = {
     };
 
     if (isMockMode) {
-      console.log('🤖 AI Simulation: Compiling Final Report...');
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 800));
       return getSimulationReport(role, difficulty, type, qaList);
     }
 
@@ -288,27 +367,27 @@ export const aiService = {
         Difficulty: ${difficulty}
         Interview Type: ${type}
 
-        Transcript details (Questions and Answers with their individual ratings):
+        Transcript details:
         ${JSON.stringify(qaList, null, 2)}
 
         Analyze this entire interview and return a comprehensive evaluation in a JSON object with this structure:
         {
           "score": 78,
-          "overallFeedback": "Detailed summary paragraph analyzing the candidate's performance across all questions, including strong areas and areas requiring general work.",
+          "overallFeedback": "Detailed summary paragraph analyzing the candidate's performance across all questions",
           "rubricBreakdown": [
             { "name": "Technical Depth", "score": 80, "description": "Short feedback summary" },
             { "name": "Problem Solving", "score": 75, "description": "Short feedback summary" },
             { "name": "Communication", "score": 85, "description": "Short feedback summary" }
           ],
           "suggestions": [
-            { "topic": "Name of weak topic area", "resource": "Specific recommendation of what they should read, practice, or review to close this gap" }
+            { "topic": "Name of weak topic area", "resource": "Specific recommendation of what they should read, practice, or review" }
           ]
         }
       `;
 
-      return await callOpenRouter(prompt);
+      return await executeAIPipeline(prompt);
     } catch (err) {
-      console.warn('⚠️ OpenRouter Compile Report failed (using simulated fallback):', err.message);
+      console.warn('⚠️ AI Compile Report failed (using simulation fallback):', err.message);
       return getSimulationReport(role, difficulty, type, qaList);
     }
   }
