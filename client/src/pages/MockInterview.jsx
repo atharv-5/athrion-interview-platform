@@ -446,6 +446,7 @@ const MockInterview = () => {
               top: '-12px',
               left: '20px',
               background: 'var(--primary)',
+              color: '#FFF8F0',
               padding: '2px 8px',
               fontSize: '0.75rem',
               fontWeight: 700,
@@ -453,7 +454,7 @@ const MockInterview = () => {
             }}>
               INTERVIEWER
             </span>
-            <p style={{ fontSize: '1.15rem', color: '#ffffff', fontWeight: 500, lineHeight: 1.6 }}>
+            <p style={{ fontSize: '1.15rem', color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.6 }}>
               {questions[currentIdx]}
             </p>
           </div>
@@ -465,6 +466,7 @@ const MockInterview = () => {
               top: '-12px',
               left: '20px',
               background: 'var(--secondary)',
+              color: '#FFF8F0',
               padding: '2px 8px',
               fontSize: '0.75rem',
               fontWeight: 700,
@@ -480,8 +482,10 @@ const MockInterview = () => {
               placeholder="Type your response here or click 'Speak Answer' to talk..."
               style={{
                 minHeight: '180px',
-                background: 'rgba(15, 21, 36, 0.4)',
-                border: '1px solid var(--border-color)',
+                background: 'var(--bg-primary)',
+                border: '2px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                fontWeight: 500,
                 resize: 'vertical',
                 lineHeight: 1.6,
                 padding: '16px',

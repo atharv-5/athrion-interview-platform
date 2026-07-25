@@ -211,14 +211,14 @@ const ResumeAnalyzer = () => {
                     <span 
                       key={index} 
                       style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        color: '#e5e5e5',
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--primary)',
+                        color: 'var(--text-primary)',
                         padding: '6px 14px',
                         borderRadius: '20px',
-                        fontSize: '0.85rem',
-                        fontWeight: 600,
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                        fontSize: '0.88rem',
+                        fontWeight: 700,
+                        boxShadow: '0 2px 4px rgba(75, 46, 43, 0.08)'
                       }}
                     >
                       {skill}
