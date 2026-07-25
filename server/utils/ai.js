@@ -1,39 +1,65 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Check if API key is configured and valid
-const apiKey = process.env.GEMINI_API_KEY;
-const isMockMode = !apiKey || (!apiKey.startsWith('AIzaSy') && !apiKey.startsWith('AQ.')) || apiKey.startsWith('your_gemini') || apiKey === '';
-
-let genAI = null;
-let model = null;
+// Support OPENROUTER_API_KEY (or fallback to GEMINI_API_KEY)
+const openrouterKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
+const isMockMode = !openrouterKey || openrouterKey.trim() === '' || openrouterKey.startsWith('your_');
 
 if (!isMockMode) {
-  try {
-    genAI = new GoogleGenerativeAI(apiKey);
-    model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" }
-    });
-    console.log('🤖 AI System: Gemini 1.5 Flash initialized successfully.');
-  } catch (err) {
-    console.error('🤖 AI System Error: Failed to initialize Gemini client:', err.message);
-  }
+  console.log('🤖 AI System: OpenRouter API initialized successfully.');
 } else {
-  console.log('🤖 AI System: Running in SIMULATION (Mock) mode. (No valid Gemini API key detected).');
+  console.log('🤖 AI System: Running in SIMULATION (Mock) mode. (No valid API key detected).');
 }
+
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash:free';
+
+// Helper to call OpenRouter API via fetch
+const callOpenRouter = async (prompt) => {
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openrouterKey.trim()}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://athrion-resume-platform.vercel.app',
+      'X-Title': 'Athrion AI Resume Platform'
+    },
+    body: JSON.stringify({
+      model: OPENROUTER_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert AI assistant that responds ONLY in clean JSON format without markdown ticks or conversational text.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      response_format: { type: 'json_object' }
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenRouter HTTP ${response.status}: ${errorText}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices[0]?.message?.content;
+  return cleanJsonResponse(content);
+};
 
 // Helper to clean JSON responses from LLM in case it returns markdown blocks
 const cleanJsonResponse = (text) => {
   try {
-    if (text.includes('```json')) {
-      text = text.split('```json')[1].split('```')[0].trim();
-    } else if (text.includes('```')) {
-      text = text.split('```')[1].split('```')[0].trim();
+    let cleaned = text.trim();
+    if (cleaned.includes('```json')) {
+      cleaned = cleaned.split('```json')[1].split('```')[0].trim();
+    } else if (cleaned.includes('```')) {
+      cleaned = cleaned.split('```')[1].split('```')[0].trim();
     }
-    return JSON.parse(text);
+    return JSON.parse(cleaned);
   } catch (err) {
     console.error('Failed to parse JSON text from AI response:', text);
     throw err;
@@ -82,7 +108,7 @@ export const aiService = {
       };
     };
 
-    if (isMockMode || !model) {
+    if (isMockMode) {
       console.log('🤖 AI Simulation: Analyzing Resume Text...');
       await new Promise(r => setTimeout(r, 1000));
       return getSimulationAnalysis(text);
@@ -90,25 +116,25 @@ export const aiService = {
 
     try {
       const prompt = `
-        You are an expert resume parsing assistant. Analyze the following resume text and extract candidate profiles details.
-        You must return a JSON object with the following structure:
+        You are an expert resume parsing assistant. Analyze the following resume text carefully.
+        Identify the candidate's actual field (e.g. MBA/Management, Finance, Tech/Engineering, Marketing, Design, etc.).
+        
+        Return a JSON object with the following structure:
         {
           "candidateName": "The candidate's name (default to 'Candidate Profile' if not found)",
-          "skills": ["List of 6-10 core technologies and soft skills"],
-          "strengths": ["List of 3 major candidate strengths based on experience"],
-          "gaps": ["List of 2 areas of improvement or skill gaps for targeting high-end roles"],
-          "roles": ["List of 3 recommended roles e.g., 'Full Stack Developer', 'System Architect'"]
+          "skills": ["List of 6-10 core technologies, tools, or domain-specific skills extracted directly from the resume"],
+          "strengths": ["List of 3 major candidate strengths based on their actual experience"],
+          "gaps": ["List of 2 areas of improvement or skill gaps for targeting high-end roles in their specific field"],
+          "roles": ["List of 3 recommended roles tailored to their exact background (e.g., 'Financial Analyst', 'Product Manager', etc.)"]
         }
-        Do not include any conversational text before or after the JSON.
+        
         Resume Text:
         ${text}
       `;
 
-      const result = await model.generateContent(prompt);
-      const responseText = await result.response.text();
-      return cleanJsonResponse(responseText);
+      return await callOpenRouter(prompt);
     } catch (err) {
-      console.warn('⚠️ Gemini Resume Analysis failed (using simulated fallback):', err.message);
+      console.warn('⚠️ OpenRouter Resume Analysis failed (using simulated fallback):', err.message);
       return getSimulationAnalysis(text);
     }
   },
@@ -149,7 +175,7 @@ export const aiService = {
       return shuffled.slice(0, numQuestions || 3);
     };
 
-    if (isMockMode || !model) {
+    if (isMockMode) {
       console.log(`🤖 AI Simulation: Generating ${numQuestions} questions for ${role} (${difficulty})...`);
       await new Promise(r => setTimeout(r, 1000));
       return getSimulationQuestions(role, difficulty, type, numQuestions);
@@ -163,23 +189,20 @@ export const aiService = {
         Interview Type: ${type}
         Number of questions required: ${numQuestions}
 
-        You must return a JSON object with this structure:
+        Return a JSON object with this structure:
         {
           "questions": ["Question 1 text", "Question 2 text", ...]
         }
         Make sure the questions are highly relevant, targeted, and match the specified difficulty.
       `;
-      const result = await model.generateContent(prompt);
-      const responseText = await result.response.text();
-      const parsed = cleanJsonResponse(responseText);
 
-      // Guard against malformed responses (missing/wrong-shaped "questions" field)
+      const parsed = await callOpenRouter(prompt);
       if (!parsed || !Array.isArray(parsed.questions)) {
-        throw new Error('Gemini response missing a valid "questions" array');
+        throw new Error('OpenRouter response missing a valid "questions" array');
       }
       return parsed.questions;
     } catch (err) {
-      console.warn('⚠️ Gemini Question Generation failed (using simulated fallback):', err.message);
+      console.warn('⚠️ OpenRouter Question Generation failed (using simulated fallback):', err.message);
       return getSimulationQuestions(role, difficulty, type, numQuestions);
     }
   },
@@ -198,7 +221,7 @@ export const aiService = {
       };
     };
 
-    if (isMockMode || !model) {
+    if (isMockMode) {
       console.log('🤖 AI Simulation: Evaluating answer...');
       await new Promise(r => setTimeout(r, 800));
       return getSimulationEvaluation();
@@ -210,20 +233,19 @@ export const aiService = {
         Question: ${question}
         Candidate Answer: ${answer}
 
-        Evaluate the answer. You must return a JSON object with the following structure:
+        Evaluate the answer. Return a JSON object with the following structure:
         {
-          "rating": 7, // Score out of 10
+          "rating": 7,
           "positives": "Detailed string of what the candidate did well in their response",
           "improvements": "Detailed string of how the candidate could improve this specific response",
           "modelAnswer": "A comprehensive example of what a perfect response would look like"
         }
         Make the assessment constructive, realistic, and detailed.
       `;
-      const result = await model.generateContent(prompt);
-      const responseText = await result.response.text();
-      return cleanJsonResponse(responseText);
+
+      return await callOpenRouter(prompt);
     } catch (err) {
-      console.warn('⚠️ Gemini Answer Evaluation failed (using simulated fallback):', err.message);
+      console.warn('⚠️ OpenRouter Answer Evaluation failed (using simulated fallback):', err.message);
       return getSimulationEvaluation();
     }
   },
@@ -253,7 +275,7 @@ export const aiService = {
       };
     };
 
-    if (isMockMode || !model) {
+    if (isMockMode) {
       console.log('🤖 AI Simulation: Compiling Final Report...');
       await new Promise(r => setTimeout(r, 1000));
       return getSimulationReport(role, difficulty, type, qaList);
@@ -271,7 +293,7 @@ export const aiService = {
 
         Analyze this entire interview and return a comprehensive evaluation in a JSON object with this structure:
         {
-          "score": 78, // Overall score percentage (0-100)
+          "score": 78,
           "overallFeedback": "Detailed summary paragraph analyzing the candidate's performance across all questions, including strong areas and areas requiring general work.",
           "rubricBreakdown": [
             { "name": "Technical Depth", "score": 80, "description": "Short feedback summary" },
@@ -283,13 +305,10 @@ export const aiService = {
           ]
         }
       `;
-      const result = await model.generateContent(prompt);
-      const responseText = await result.response.text();
-      return cleanJsonResponse(responseText);
+
+      return await callOpenRouter(prompt);
     } catch (err) {
-      console.warn('⚠️ Gemini Compile Report failed (using simulated fallback):', err.message);
-      // FIX: this was missing — without it, a failed Gemini call returned
-      // `undefined` instead of falling back, breaking whatever called this function.
+      console.warn('⚠️ OpenRouter Compile Report failed (using simulated fallback):', err.message);
       return getSimulationReport(role, difficulty, type, qaList);
     }
   }
