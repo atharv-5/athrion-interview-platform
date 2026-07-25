@@ -41,25 +41,35 @@ const Dashboard = () => {
 
 
       // Fallback Mock Data
-      setTimeout(() => {
+        // Load from local storage
+        const localHistory = localStorage.getItem('interview_history');
+        let parsedHistory = [];
+        if (localHistory) {
+          try {
+            parsedHistory = JSON.parse(localHistory);
+          } catch (e) {}
+        }
+
+        const count = parsedHistory.length > 0 ? parsedHistory.length : 1;
+        const avgScore = parsedHistory.length > 0 
+          ? Math.round(parsedHistory.reduce((a, b) => a + (b.score || 70), 0) / count)
+          : 82;
+
         setStats({
-          averageScore: 78,
-          interviewsCompleted: 4,
-          focusAreas: ['System Design', 'Concurrency', 'STAR Method'],
+          averageScore: avgScore,
+          interviewsCompleted: count,
+          focusAreas: ['System Design', 'STAR Method'],
           skills: [
             { name: 'Technical Knowledge', value: 85 },
             { name: 'Problem Solving', value: 80 },
             { name: 'Communication', value: 75 },
             { name: 'Behavioral Skills', value: 70 }
           ],
-          scoreHistory: [65, 72, 75, 78, 85]
+          scoreHistory: parsedHistory.map(h => h.score || 70)
         });
 
-        // Try load from local storage
-        const localHistory = localStorage.getItem('interview_history');
-        if (localHistory) {
-          const parsed = JSON.parse(localHistory);
-          setRecentInterviews(parsed.slice(0, 3));
+        if (parsedHistory.length > 0) {
+          setRecentInterviews(parsedHistory.slice(0, 3));
         } else {
           setRecentInterviews([
             {
@@ -78,16 +88,14 @@ const Dashboard = () => {
               difficulty: 'Medium',
               score: 72,
               date: '2026-06-22T10:15:00Z',
-              totalQuestions: 5
             }
           ]);
         }
         setLoading(false);
-      }, 500);
-    };
+      };
 
-    fetchDashboardData();
-  }, []);
+      fetchDashboardData();
+    }, []);
 
 
   if (loading) {
@@ -172,50 +180,116 @@ const Dashboard = () => {
             </span>
           </div>
 
-          {/* Custom SVG Line Graph */}
-          <div style={{ width: '100%', height: '180px', position: 'relative' }}>
-            <svg style={{ width: '100%', height: '100%', overflow: 'visible' }} viewBox="0 0 400 150">
-              <defs>
-                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {/* Grid Lines */}
-              <line x1="0" y1="25" x2="400" y2="25" stroke="rgba(75,46,43,0.06)" strokeWidth="1" />
-              <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(75,46,43,0.06)" strokeWidth="1" />
-              <line x1="0" y1="125" x2="400" y2="125" stroke="rgba(75,46,43,0.06)" strokeWidth="1" />
+          {/* Dynamic SVG Line Graph */}
+          {(() => {
+            // Compute real score history from actual interviews
+            const historyList = (recentInterviews && recentInterviews.length > 0)
+              ? [...recentInterviews].reverse()
+              : [];
 
-              {/* The Line & Area */}
-              <path
-                d="M 10,120 L 100,105 L 200,98 L 300,90 L 390,75 L 390,150 L 10,150 Z"
-                fill="url(#chartGradient)"
-              />
-              <path
-                d="M 10,120 L 100,105 L 200,98 L 300,90 L 390,75"
-                fill="none"
-                stroke="var(--primary)"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
+            if (historyList.length === 0) {
+              return (
+                <div style={{ height: '180px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '8px' }}>
+                  <Activity size={32} opacity={0.5} />
+                  <p style={{ fontSize: '0.9rem' }}>No interview sessions completed yet.</p>
+                  <span style={{ fontSize: '0.8rem' }}>Complete a mock interview to track progress here!</span>
+                </div>
+              );
+            }
 
-              {/* Data points */}
-              <circle cx="10" cy="120" r="5" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2" />
-              <circle cx="100" cy="105" r="5" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2" />
-              <circle cx="200" cy="98" r="5" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2" />
-              <circle cx="300" cy="90" r="5" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2" />
-              <circle cx="390" cy="75" r="6" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2" />
-            </svg>
+            const chartHeight = 130;
+            const chartWidth = 400;
+            const paddingX = 40;
 
-            {/* Axis labels */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              <span>Session 1</span>
-              <span>Session 2</span>
-              <span>Session 3</span>
-              <span>Session 4</span>
-              <span>Session 5 (Latest)</span>
-            </div>
-          </div>
+            const points = historyList.map((item, idx) => {
+              const x = historyList.length === 1 
+                ? chartWidth / 2 
+                : paddingX + (idx * (chartWidth - 2 * paddingX)) / (historyList.length - 1);
+              const score = item.score || 70;
+              // Map score 0-100 to Y coordinates (120 is bottom, 20 is top)
+              const y = 130 - (score / 100) * 100;
+              return { x, y, score, role: item.role, date: item.date || item.createdAt };
+            });
+
+            // SVG Path command
+            const pathD = points.length === 1 
+              ? '' 
+              : points.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x},${p.y}`, '');
+
+            const areaD = points.length > 1 
+              ? `${pathD} L ${points[points.length - 1].x},140 L ${points[0].x},140 Z`
+              : '';
+
+            return (
+              <div style={{ width: '100%', position: 'relative' }}>
+                <div style={{ width: '100%', height: '160px', position: 'relative' }}>
+                  <svg style={{ width: '100%', height: '100%', overflow: 'visible' }} viewBox="0 0 400 140" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {/* Grid Lines */}
+                    <line x1="0" y1="20" x2="400" y2="20" stroke="rgba(75,46,43,0.06)" strokeWidth="1" />
+                    <line x1="0" y1="70" x2="400" y2="70" stroke="rgba(75,46,43,0.06)" strokeWidth="1" />
+                    <line x1="0" y1="120" x2="400" y2="120" stroke="rgba(75,46,43,0.06)" strokeWidth="1" />
+
+                    {/* Area fill */}
+                    {areaD && <path d={areaD} fill="url(#chartGradient)" />}
+
+                    {/* Connecting line */}
+                    {pathD && <path d={pathD} fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" />}
+
+                    {/* Interactive Data Points with Tooltips */}
+                    {points.map((pt, i) => (
+                      <g key={i} className="chart-point-group" style={{ cursor: 'pointer' }}>
+                        <circle cx={pt.x} cy={pt.y} r="6" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2.5" />
+                        
+                        {/* Hover Tooltip Popup */}
+                        <g className="chart-tooltip" style={{ pointerEvents: 'none', transition: 'opacity 0.2s' }}>
+                          <rect 
+                            x={Math.max(10, Math.min(310, pt.x - 45))} 
+                            y={Math.max(0, pt.y - 45)} 
+                            width="90" 
+                            height="32" 
+                            rx="6" 
+                            fill="var(--text-primary)" 
+                          />
+                          <text 
+                            x={Math.max(10, Math.min(310, pt.x - 45)) + 45} 
+                            y={Math.max(0, pt.y - 45) + 16} 
+                            fill="#FFF8F0" 
+                            fontSize="11" 
+                            fontWeight="bold" 
+                            textAnchor="middle" 
+                            alignmentBaseline="central"
+                          >
+                            Score: {pt.score}%
+                          </text>
+                        </g>
+                      </g>
+                    ))}
+                  </svg>
+                </div>
+
+                {/* Session Axis Labels */}
+                <div style={{ display: 'flex', justifyContent: historyList.length === 1 ? 'center' : 'space-between', marginTop: '16px', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  {historyList.map((item, idx) => (
+                    <span key={idx}>
+                      Session {idx + 1} {idx === historyList.length - 1 ? '(Latest)' : ''}
+                    </span>
+                  ))}
+                </div>
+
+                <style>{`
+                  .chart-tooltip { opacity: 0; }
+                  .chart-point-group:hover .chart-tooltip { opacity: 1; }
+                  .chart-point-group:hover circle { r: 8; fill: var(--primary-hover); }
+                `}</style>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Skill Breakdown */}
