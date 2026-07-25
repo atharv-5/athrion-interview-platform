@@ -52,9 +52,9 @@ const startServer = async () => {
   app.listen(PORT, () => {
     console.log(`=================================================`);
     console.log(`🚀 Server listening on Port: ${PORT}`);
-    console.log(`🚀 Environment: Development`);
+    console.log(`🚀 Environment: ${process.env.NODE_ENV || 'Development'}`);
     console.log(`🚀 Database status: Running on [${dbStatus.type.toUpperCase()}] mode`);
-    console.log(`🚀 Local client allowed: http://localhost:5173`);
+    console.log(`🚀 Client Allowed: ${process.env.CLIENT_URL || 'http://localhost:5173'}`);
     console.log(`=================================================`);
   });
 };
