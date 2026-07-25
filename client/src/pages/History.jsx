@@ -139,7 +139,7 @@ const History = () => {
                       transition: 'var(--transition-smooth)'
                     }}
                   >
-                    <td style={{ padding: '20px 24px', fontWeight: 600, color: '#ffffff' }}>{item.role}</td>
+                    <td style={{ padding: '20px 24px', fontWeight: 600, color: 'var(--text-primary)' }}>{item.role}</td>
                     <td style={{ padding: '20px 24px', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>{item.type}</td>
                     <td style={{ padding: '20px 24px' }}>
                       <span style={{

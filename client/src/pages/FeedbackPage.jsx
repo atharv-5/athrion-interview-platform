@@ -238,7 +238,7 @@ const FeedbackPage = () => {
                   }}>
                     {idx + 1}
                   </span>
-                  <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '450px', color: '#ffffff' }}>
+                  <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '450px', color: 'var(--text-primary)' }}>
                     {item.question}
                   </p>
                 </div>
@@ -341,15 +341,15 @@ const FeedbackPage = () => {
           </div>
 
           {/* Action Callouts */}
-          <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--primary-gradient)', border: 'none', color: '#ffffff' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Ready to try again?</h3>
-            <p style={{ fontSize: '0.85rem', opacity: 0.9, lineHeight: 1.5, margin: 0 }}>
+          <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: '16px', background: 'var(--primary-gradient)', border: 'none', color: '#FFF8F0' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#FFF8F0' }}>Ready to try again?</h3>
+            <p style={{ fontSize: '0.88rem', color: '#FFF8F0', opacity: 0.95, lineHeight: 1.5, margin: 0 }}>
               Practice makes perfect. Redo this session or configure a new topic to test your progress on these gaps.
             </p>
             <button 
               onClick={() => navigate(`/interview?role=${encodeURIComponent(feedback.role)}`)} 
-              className="btn btn-secondary" 
-              style={{ background: '#ffffff', color: 'var(--bg-primary)', fontWeight: 700, border: 'none', width: '100%', marginTop: '8px' }}
+              className="btn" 
+              style={{ background: '#FFF8F0', color: 'var(--text-primary)', fontWeight: 800, border: 'none', width: '100%', marginTop: '8px', padding: '12px 16px' }}
             >
               <RefreshCw size={16} /> Re-Take Interview
             </button>
