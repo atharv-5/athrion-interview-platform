@@ -12,7 +12,7 @@ if (!isMockMode) {
   console.log('🤖 AI System: Running in SIMULATION (Mock) mode. (No valid API key detected).');
 }
 
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash:free';
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'nvidia/nemotron-3-nano-30b-a3b:free';
 
 // Helper to call OpenRouter API via fetch
 const callOpenRouter = async (prompt) => {
@@ -35,8 +35,7 @@ const callOpenRouter = async (prompt) => {
           role: 'user',
           content: prompt
         }
-      ],
-      response_format: { type: 'json_object' }
+      ]
     })
   });
 
@@ -53,7 +52,7 @@ const callOpenRouter = async (prompt) => {
 // Helper to clean JSON responses from LLM in case it returns markdown blocks
 const cleanJsonResponse = (text) => {
   try {
-    let cleaned = text.trim();
+    let cleaned = (text || '').trim();
     if (cleaned.includes('```json')) {
       cleaned = cleaned.split('```json')[1].split('```')[0].trim();
     } else if (cleaned.includes('```')) {
@@ -74,37 +73,38 @@ export const aiService = {
     const getSimulationAnalysis = (text) => {
       const lowerText = (text || '').toLowerCase();
       const skills = [];
-      if (lowerText.includes('react') || lowerText.includes('vue') || lowerText.includes('angular')) {
+      const roles = [];
+
+      if (lowerText.includes('mba') || lowerText.includes('business') || lowerText.includes('management') || lowerText.includes('marketing') || lowerText.includes('finance')) {
+        skills.push('Strategic Planning', 'Market Research', 'Financial Forecasting', 'Cross-Functional Leadership', 'Stakeholder Management');
+        roles.push('Product Manager', 'Business Analyst', 'Marketing Director');
+      }
+      if (lowerText.includes('react') || lowerText.includes('vue') || lowerText.includes('angular') || lowerText.includes('frontend')) {
         skills.push('Frontend Architecture', 'React.js', 'State Management');
       }
-      if (lowerText.includes('node') || lowerText.includes('express') || lowerText.includes('python') || lowerText.includes('django')) {
+      if (lowerText.includes('node') || lowerText.includes('express') || lowerText.includes('python') || lowerText.includes('django') || lowerText.includes('backend')) {
         skills.push('Backend APIs', 'Node.js', 'Express.js', 'RESTful Design');
       }
       if (lowerText.includes('mongo') || lowerText.includes('sql') || lowerText.includes('postgres') || lowerText.includes('db')) {
         skills.push('Database Schemas', 'NoSQL Datastores', 'Query Optimization');
       }
-      if (lowerText.includes('docker') || lowerText.includes('kubernetes') || lowerText.includes('aws') || lowerText.includes('cloud')) {
-        skills.push('DevOps', 'Docker Containerization', 'Cloud Deployment (AWS)');
-      }
 
-      const finalSkills = skills.length > 0 ? skills : ['Software Engineering', 'Algorithms', 'Full-stack Architecture', 'Data Structures'];
-      const defaultStrengths = [
-        'Solid knowledge of software lifecycle and architecture principles.',
-        'Demonstrates structured and logical approach to software creation.',
-        'Good alignment with modern tech frameworks.'
-      ];
-      const defaultGaps = [
-        'Could elaborate further on system optimization and profiling tools.',
-        'Would benefit from more exposure to end-to-end integration test suites.'
-      ];
-      const defaultRoles = ['Full Stack Engineer', 'Backend Developer', 'Software Engineer'];
+      const finalSkills = skills.length > 0 ? skills : ['Strategic Thinking', 'Project Execution', 'Domain Leadership', 'Problem Solving'];
+      const finalRoles = roles.length > 0 ? roles : ['Project Manager', 'Operations Specialist', 'Consultant'];
 
       return {
         candidateName: 'Candidate Profile',
         skills: finalSkills,
-        strengths: defaultStrengths,
-        gaps: defaultGaps,
-        roles: defaultRoles
+        strengths: [
+          'Strong analytical thinking and structured problem-solving.',
+          'Proven ability to manage cross-functional initiatives.',
+          'Clear strategic alignment with industry standard benchmarks.'
+        ],
+        gaps: [
+          'Could provide deeper quantitative metrics on business impact.',
+          'Would benefit from showcasing end-to-end project case studies.'
+        ],
+        roles: finalRoles
       };
     };
 
