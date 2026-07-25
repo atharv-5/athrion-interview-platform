@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { fetchWithAuth, getToken, setToken, clearAuth } from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -12,40 +13,43 @@ export const AuthProvider = ({ children }) => {
   const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   useEffect(() => {
-    // Check if token exists
     const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      const mockUser = localStorage.getItem('mock_user');
-      
-      if (!token && !mockUser) {
-        setLoading(false);
-        return;
-      }
-
-      if (mockUser) {
-        setUser(JSON.parse(mockUser));
-        setLoading(false);
-        return;
-      }
-
       try {
-        const res = await fetch(`${backendUrl}/api/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
+        const token = getToken();
+        const mockUser = localStorage.getItem('mock_user');
+        
+        if (!token && !mockUser) {
+          return;
+        }
+
+        if (mockUser && !token) {
+          try {
+            setUser(JSON.parse(mockUser));
+            return;
+          } catch (e) {
+            localStorage.removeItem('mock_user');
           }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
-        } else {
-          localStorage.removeItem('token');
+        }
+
+        if (token) {
+          const res = await fetchWithAuth('/api/auth/me');
+          if (res.ok) {
+            const data = await res.json();
+            setUser(data.user);
+          } else {
+            clearAuth();
+            setUser(null);
+          }
         }
       } catch (err) {
-        console.warn('Backend connection failed. Falling back to local storage auth.');
-        // If backend fails but token exists, we can mock user if mock_user existed
-        const localUser = localStorage.getItem('local_user');
-        if (localUser) {
-          setUser(JSON.parse(localUser));
+        console.warn('Backend verification offline:', err.message);
+        try {
+          const localUser = localStorage.getItem('local_user');
+          if (localUser) {
+            setUser(JSON.parse(localUser));
+          }
+        } catch (e) {
+          localStorage.removeItem('local_user');
         }
       } finally {
         setLoading(false);
@@ -53,38 +57,51 @@ export const AuthProvider = ({ children }) => {
     };
 
     checkAuth();
+
+
+    // Event listener for unauthorized 401 triggers across the app
+    const handleUnauthorized = () => {
+      setUser(null);
+      setError('Session expired. Please sign in again.');
+    };
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, []);
 
   const login = async (email, password) => {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${backendUrl}/api/auth/login`, {
+      const res = await fetchWithAuth('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       
+      const data = await res.json();
+
       if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem('token', data.token);
+        setToken(data.token);
         setUser(data.user);
         setLoading(false);
         return true;
       } else {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Login failed');
+        throw new Error(data.message || 'Login failed');
       }
     } catch (err) {
-      console.warn('Login backend error, performing simulated login:', err.message);
-      // Fallback simulated login
-      if (email && password) {
+      console.warn('Login error:', err.message);
+      // Fallback simulated login if server endpoint unreachable
+      if (err.message === 'Failed to fetch' && email && password) {
+        const dummyToken = `user_mock_${Date.now()}`;
         const dummyUser = {
           id: 'user_mock_123',
           name: email.split('@')[0].replace('.', ' '),
           email: email,
           createdAt: new Date().toISOString()
         };
+        setToken(dummyToken);
         localStorage.setItem('mock_user', JSON.stringify(dummyUser));
         setUser(dummyUser);
         setLoading(false);
@@ -100,32 +117,33 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch(`${backendUrl}/api/auth/register`, {
+      const res = await fetchWithAuth('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password })
       });
       
+      const data = await res.json();
+
       if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem('token', data.token);
+        setToken(data.token);
         setUser(data.user);
         setLoading(false);
         return true;
       } else {
-        const errData = await res.json();
-        throw new Error(errData.message || 'Registration failed');
+        throw new Error(data.message || 'Registration failed');
       }
     } catch (err) {
-      console.warn('Register backend error, performing simulated registration:', err.message);
-      // Fallback simulated register
-      if (name && email) {
+
+      console.warn('Registration error:', err.message);
+      if (err.message === 'Failed to fetch' && name && email) {
+        const dummyToken = `user_mock_${Date.now()}`;
         const dummyUser = {
           id: 'user_mock_123',
           name,
           email,
           createdAt: new Date().toISOString()
         };
+        setToken(dummyToken);
         localStorage.setItem('mock_user', JSON.stringify(dummyUser));
         setUser(dummyUser);
         setLoading(false);
@@ -138,8 +156,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('mock_user');
+    clearAuth();
     setUser(null);
   };
 
@@ -155,3 +172,4 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+

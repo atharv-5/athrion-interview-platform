@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { fetchWithAuth } from '../utils/api';
 import { Clock, Calendar, ChevronRight, Award, Trash2, ShieldAlert } from 'lucide-react';
 
 const History = () => {
-  const { backendUrl } = useAuth();
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchHistory = async () => {
-      const token = localStorage.getItem('token');
       try {
-        const res = await fetch(`${backendUrl}/api/interviews/history`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth('/api/interviews/history');
         if (res.ok) {
           const data = await res.json();
           setHistory(data.history);
@@ -25,6 +22,7 @@ const History = () => {
       } catch (err) {
         console.warn('Backend connection failed, loading local mockup history.');
       }
+
 
       // Local storage fallback
       const saved = localStorage.getItem('interview_history');
@@ -59,7 +57,8 @@ const History = () => {
     };
 
     fetchHistory();
-  }, [backendUrl]);
+  }, []);
+
 
   const formatDate = (isoString) => {
     const date = new Date(isoString);

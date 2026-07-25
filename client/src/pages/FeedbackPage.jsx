@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { fetchWithAuth } from '../utils/api';
 import { 
   Award, 
   Clock, 
@@ -19,7 +20,6 @@ const FeedbackPage = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const isMock = searchParams.get('isMock') === 'true';
-  const { backendUrl } = useAuth();
   const navigate = useNavigate();
 
   const [feedback, setFeedback] = useState(null);
@@ -39,15 +39,13 @@ const FeedbackPage = () => {
       }
 
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`${backendUrl}/api/interviews/${id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`/api/interviews/${id}`);
         if (res.ok) {
           const data = await res.json();
           setFeedback(data.session);
         }
       } catch (err) {
+
         console.warn('Backend connection failed, looking for local mockup database.');
         const saved = localStorage.getItem(`feedback_session_${id}`);
         if (saved) {
@@ -59,7 +57,8 @@ const FeedbackPage = () => {
     };
 
     fetchFeedback();
-  }, [id, isMock, backendUrl]);
+  }, [id, isMock]);
+
 
   const toggleQuestion = (idx) => {
     setOpenQuestionIdx(openQuestionIdx === idx ? -1 : idx);

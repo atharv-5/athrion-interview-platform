@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Sidebar from './components/Sidebar';
+import Dock from './components/Dock';
 import Dashboard from './pages/Dashboard';
 import ResumeAnalyzer from './pages/ResumeAnalyzer';
 import MockInterview from './pages/MockInterview';
@@ -52,11 +52,11 @@ const AppContent = () => {
       <div className="glow-blob blob-primary"></div>
       <div className="glow-blob blob-secondary"></div>
 
-      {/* Navigation Sidebar */}
-      <Sidebar />
+      {/* Navigation Dock */}
+      <Dock />
 
       {/* Page Routing */}
-      <main className="main-content" style={{ zIndex: 1, position: 'relative' }}>
+      <main className="main-content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/resume" element={<ResumeAnalyzer />} />

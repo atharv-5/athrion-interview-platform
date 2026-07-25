@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { fetchWithAuth } from '../utils/api';
 import { 
   FileUp, 
   Sparkles, 
@@ -12,7 +13,6 @@ import {
 } from 'lucide-react';
 
 const ResumeAnalyzer = () => {
-  const { backendUrl } = useAuth();
   const navigate = useNavigate();
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState(null);
@@ -81,18 +81,14 @@ const ResumeAnalyzer = () => {
     }, 1200);
 
     try {
-      const token = localStorage.getItem('token');
       let data = null;
 
       if (file) {
         const formData = new FormData();
         formData.append('resume', file);
 
-        const res = await fetch(`${backendUrl}/api/resumes/upload`, {
+        const res = await fetchWithAuth('/api/resumes/upload', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          },
           body: formData
         });
         
@@ -100,14 +96,11 @@ const ResumeAnalyzer = () => {
           data = await res.json();
         }
       } else {
-        const res = await fetch(`${backendUrl}/api/resumes/analyze-text`, {
+        const res = await fetchWithAuth('/api/resumes/analyze-text', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
           body: JSON.stringify({ text: resumeText })
         });
+
         
         if (res.ok) {
           data = await res.json();

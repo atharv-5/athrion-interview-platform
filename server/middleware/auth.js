@@ -3,43 +3,56 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Fail fast at startup if this isn't set — never fall back to a hardcoded secret
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET is not set in environment variables. Server will not start.');
+}
+
 export const protect = async (req, res, next) => {
-  let token;
+  const authHeader = req.headers.authorization;
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-
-      // Handle mock authorization token
-      if (token.startsWith('user_mock_') || token === 'null' || token === 'undefined') {
-        req.user = {
-          id: 'user_mock_123',
-          name: 'Mock User',
-          email: 'mock@example.com'
-        };
-        return next();
-      }
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super_secret_antigravity_token_key_12345');
-      
-      // Support both local DB object structure and Mongoose object structure
-      req.user = {
-        id: decoded.id,
-        name: decoded.name,
-        email: decoded.email
-      };
-      
-      next();
-    } catch (error) {
-      console.error('Token authentication failure:', error.message);
-      return res.status(401).json({ message: 'Not authorized, token validation failed' });
-    }
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Not authorized, no token provided' });
   }
 
-  if (!token) {
-    return res.status(401).json({ message: 'Not authorized, no token provided' });
+  const token = authHeader.split(' ')[1];
+
+  if (!token || token === 'null' || token === 'undefined') {
+    return res.status(401).json({ message: 'Not authorized, invalid token format' });
+  }
+
+  // Mock auth for local testing ONLY — impossible to trigger outside development,
+  // and requires an explicit opt-in flag, not just NODE_ENV, to reduce misconfig risk.
+  const mockAuthEnabled =
+    process.env.NODE_ENV !== 'production' && process.env.ALLOW_MOCK_AUTH === 'true';
+
+  if (mockAuthEnabled && token.startsWith('user_mock_')) {
+    req.user = {
+      id: 'user_mock_123',
+      name: 'Mock User',
+      email: 'mock@example.com',
+    };
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    req.user = {
+      id: decoded.id,
+      name: decoded.name,
+      email: decoded.email,
+    };
+
+    return next();
+  } catch (error) {
+    console.error('Token authentication failure:', error.message);
+
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Session expired, please log in again', expired: true });
+    }
+
+    return res.status(401).json({ message: 'Not authorized, token validation failed' });
   }
 };

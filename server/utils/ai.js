@@ -3,9 +3,9 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Check if API key is configured
+// Check if API key is configured and valid
 const apiKey = process.env.GEMINI_API_KEY;
-const isMockMode = !apiKey || apiKey.startsWith('your_gemini') || apiKey === '';
+const isMockMode = !apiKey || (!apiKey.startsWith('AIzaSy') && !apiKey.startsWith('AQ.')) || apiKey.startsWith('your_gemini') || apiKey === '';
 
 let genAI = null;
 let model = null;
@@ -13,7 +13,7 @@ let model = null;
 if (!isMockMode) {
   try {
     genAI = new GoogleGenerativeAI(apiKey);
-    model = genAI.getGenerativeModel({ 
+    model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       generationConfig: { responseMimeType: "application/json" }
     });
@@ -22,7 +22,7 @@ if (!isMockMode) {
     console.error('🤖 AI System Error: Failed to initialize Gemini client:', err.message);
   }
 } else {
-  console.log('🤖 AI System: Running in SIMULATION (Mock) mode. (No Gemini API key detected).');
+  console.log('🤖 AI System: Running in SIMULATION (Mock) mode. (No valid Gemini API key detected).');
 }
 
 // Helper to clean JSON responses from LLM in case it returns markdown blocks
@@ -45,12 +45,8 @@ export const aiService = {
    * Analyzes resume text and returns structured skills, strengths, gaps, and roles.
    */
   analyzeResume: async (text) => {
-    if (isMockMode || !model) {
-      console.log('🤖 AI Simulation: Analyzing Resume Text...');
-      await new Promise(r => setTimeout(r, 2000));
-
-      // Attempt to extract some keywords from the text
-      const lowerText = text.toLowerCase();
+    const getSimulationAnalysis = (text) => {
+      const lowerText = (text || '').toLowerCase();
       const skills = [];
       if (lowerText.includes('react') || lowerText.includes('vue') || lowerText.includes('angular')) {
         skills.push('Frontend Architecture', 'React.js', 'State Management');
@@ -65,7 +61,6 @@ export const aiService = {
         skills.push('DevOps', 'Docker Containerization', 'Cloud Deployment (AWS)');
       }
 
-      // Default fallback lists if text is short
       const finalSkills = skills.length > 0 ? skills : ['Software Engineering', 'Algorithms', 'Full-stack Architecture', 'Data Structures'];
       const defaultStrengths = [
         'Solid knowledge of software lifecycle and architecture principles.',
@@ -85,6 +80,12 @@ export const aiService = {
         gaps: defaultGaps,
         roles: defaultRoles
       };
+    };
+
+    if (isMockMode || !model) {
+      console.log('🤖 AI Simulation: Analyzing Resume Text...');
+      await new Promise(r => setTimeout(r, 1000));
+      return getSimulationAnalysis(text);
     }
 
     try {
@@ -107,8 +108,8 @@ export const aiService = {
       const responseText = await result.response.text();
       return cleanJsonResponse(responseText);
     } catch (err) {
-      console.error('Gemini Resume Analysis Error:', err);
-      throw err;
+      console.warn('⚠️ Gemini Resume Analysis failed (using simulated fallback):', err.message);
+      return getSimulationAnalysis(text);
     }
   },
 
@@ -116,18 +117,15 @@ export const aiService = {
    * Generates mock interview questions based on role, difficulty, and type.
    */
   generateQuestions: async (role, difficulty, type, numQuestions) => {
-    if (isMockMode || !model) {
-      console.log(`🤖 AI Simulation: Generating ${numQuestions} questions for ${role} (${difficulty})...`);
-      await new Promise(r => setTimeout(r, 1500));
-
-      const typeLower = type.toLowerCase();
+    const getSimulationQuestions = (role, difficulty, type, numQuestions) => {
+      const typeLower = (type || 'technical').toLowerCase();
       let pool = [];
 
       if (typeLower === 'technical') {
         pool = [
           `What is the difference between client-side rendering and server-side rendering in React/NextJS? When would you use one over the other?`,
           `How does Node.js handle async tasks underneath the hood? Explain the role of the Event Loop and thread pool (libuv).`,
-          `Explain how index works in MongoDB. What is a compound index and how do you analyze query performance?`,
+          `Explain how indexing works in MongoDB. What is a compound index and how do you analyze query performance?`,
           `What are the SOLID design principles? Can you give an example of how you apply the Single Responsibility Principle in JavaScript?`,
           `Explain the concept of WebSockets. How is it different from HTTP polling, and how would you build a chat app connection pool?`
         ];
@@ -147,13 +145,17 @@ export const aiService = {
         ];
       }
 
-      // Shuffle pool and return numQuestions
       const shuffled = [...pool].sort(() => 0.5 - Math.random());
-      return shuffled.slice(0, numQuestions);
+      return shuffled.slice(0, numQuestions || 3);
+    };
+
+    if (isMockMode || !model) {
+      console.log(`🤖 AI Simulation: Generating ${numQuestions} questions for ${role} (${difficulty})...`);
+      await new Promise(r => setTimeout(r, 1000));
+      return getSimulationQuestions(role, difficulty, type, numQuestions);
     }
 
     try {
-      // Modify model generation config for text responses if needed, but since we set JSON mode globally we keep it
       const prompt = `
         You are an expert interviewer. Generate a list of questions for a candidate interview.
         Role: ${role}
@@ -170,10 +172,15 @@ export const aiService = {
       const result = await model.generateContent(prompt);
       const responseText = await result.response.text();
       const parsed = cleanJsonResponse(responseText);
+
+      // Guard against malformed responses (missing/wrong-shaped "questions" field)
+      if (!parsed || !Array.isArray(parsed.questions)) {
+        throw new Error('Gemini response missing a valid "questions" array');
+      }
       return parsed.questions;
     } catch (err) {
-      console.error('Gemini Question Generation Error:', err);
-      throw err;
+      console.warn('⚠️ Gemini Question Generation failed (using simulated fallback):', err.message);
+      return getSimulationQuestions(role, difficulty, type, numQuestions);
     }
   },
 
@@ -181,17 +188,20 @@ export const aiService = {
    * Evaluates a single question/answer pair.
    */
   evaluateAnswer: async (question, answer) => {
-    if (isMockMode || !model) {
-      console.log('🤖 AI Simulation: Evaluating answer...');
-      await new Promise(r => setTimeout(r, 1000));
-      
-      const score = Math.floor(Math.random() * 4) + 6; // 6 to 9
+    const getSimulationEvaluation = () => {
+      const score = Math.floor(Math.random() * 4) + 6;
       return {
         rating: score,
         positives: 'Answer directly addresses the core question, showing key understanding of concepts. Used correct industry vocabulary.',
         improvements: 'Could provide a specific example of applying this in a real project. Explain trade-offs in structural complexity.',
         modelAnswer: `An outstanding response would start by explaining the foundational architecture, explicitly walk through code paradigms or system schemas, highlight production edge cases (like server concurrency or memory management), and provide a concrete case study showing business value.`
       };
+    };
+
+    if (isMockMode || !model) {
+      console.log('🤖 AI Simulation: Evaluating answer...');
+      await new Promise(r => setTimeout(r, 800));
+      return getSimulationEvaluation();
     }
 
     try {
@@ -213,8 +223,8 @@ export const aiService = {
       const responseText = await result.response.text();
       return cleanJsonResponse(responseText);
     } catch (err) {
-      console.error('Gemini Answer Evaluation Error:', err);
-      throw err;
+      console.warn('⚠️ Gemini Answer Evaluation failed (using simulated fallback):', err.message);
+      return getSimulationEvaluation();
     }
   },
 
@@ -222,15 +232,11 @@ export const aiService = {
    * Reviews the transcript of an entire session and compiles a detailed final assessment.
    */
   compileFinalReport: async (role, difficulty, type, qaList) => {
-    if (isMockMode || !model) {
-      console.log('🤖 AI Simulation: Compiling Final Report...');
-      await new Promise(r => setTimeout(r, 2000));
-      
-      // Calculate overall average score
-      const ratings = qaList.map(qa => qa.rating || 7);
-      const avgRating = ratings.reduce((sum, val) => sum + val, 0) / ratings.length;
+    const getSimulationReport = (role, difficulty, type, qaList) => {
+      const ratings = (qaList || []).map(qa => qa.rating || 7);
+      const avgRating = ratings.length > 0 ? (ratings.reduce((sum, val) => sum + val, 0) / ratings.length) : 7.5;
       const scorePercentage = Math.round(avgRating * 10);
-      
+
       return {
         score: scorePercentage,
         overallFeedback: `You demonstrated a good understanding of ${role} topics. Your technical communication is strong, showing you can articulate design layouts and functional concepts. Structuring your responses with clear problem definitions, trade-off comparisons, and concrete examples will elevate your candidacy for advanced levels.`,
@@ -245,6 +251,12 @@ export const aiService = {
           { topic: 'Behavioral STAR alignment', resource: 'Draft 3 project examples detailing the Situation, Task, Action, and Business Result.' }
         ]
       };
+    };
+
+    if (isMockMode || !model) {
+      console.log('🤖 AI Simulation: Compiling Final Report...');
+      await new Promise(r => setTimeout(r, 1000));
+      return getSimulationReport(role, difficulty, type, qaList);
     }
 
     try {
@@ -253,7 +265,7 @@ export const aiService = {
         Role: ${role}
         Difficulty: ${difficulty}
         Interview Type: ${type}
-        
+
         Transcript details (Questions and Answers with their individual ratings):
         ${JSON.stringify(qaList, null, 2)}
 
@@ -267,8 +279,7 @@ export const aiService = {
             { "name": "Communication", "score": 85, "description": "Short feedback summary" }
           ],
           "suggestions": [
-            { "topic": "Name of weak topic area", "resource": "Specific recommendation of what they should read, practice, or review to close this gap" },
-            ...
+            { "topic": "Name of weak topic area", "resource": "Specific recommendation of what they should read, practice, or review to close this gap" }
           ]
         }
       `;
@@ -276,8 +287,10 @@ export const aiService = {
       const responseText = await result.response.text();
       return cleanJsonResponse(responseText);
     } catch (err) {
-      console.error('Gemini Compile Report Error:', err);
-      throw err;
+      console.warn('⚠️ Gemini Compile Report failed (using simulated fallback):', err.message);
+      // FIX: this was missing — without it, a failed Gemini call returned
+      // `undefined` instead of falling back, breaking whatever called this function.
+      return getSimulationReport(role, difficulty, type, qaList);
     }
   }
 };

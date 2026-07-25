@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { fetchWithAuth } from '../utils/api';
 import { 
   Play, 
   MessageSquare, 
@@ -16,11 +17,11 @@ import {
 } from 'lucide-react';
 
 const MockInterview = () => {
-  const { backendUrl } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const roleParam = searchParams.get('role') || '';
   const sessionParam = searchParams.get('session') || '';
+
 
   // Setup State
   const [role, setRole] = useState(roleParam || 'Junior Full Stack Developer');
@@ -132,13 +133,8 @@ const MockInterview = () => {
     setLoadingMsg('AI is designing customized questions for your profile...');
     
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${backendUrl}/api/interviews/start`, {
+      const res = await fetchWithAuth('/api/interviews/start', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify({ role, difficulty, type, numQuestions })
       });
 
@@ -209,7 +205,6 @@ const MockInterview = () => {
     setLoading(true);
     setLoadingMsg('AI is evaluating your response...');
 
-    const token = localStorage.getItem('token');
     const answerPayload = {
       questionIndex: currentIdx,
       question: questions[currentIdx],
@@ -233,12 +228,8 @@ const MockInterview = () => {
       // Completed last question!
       setLoadingMsg('Analyzing final performance and compiling suggestions...');
       try {
-        const res = await fetch(`${backendUrl}/api/interviews/${sessionId}/finish`, {
+        const res = await fetchWithAuth(`/api/interviews/${sessionId}/finish`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
           body: JSON.stringify({ answers: updatedAnswers, duration: timeSpent })
         });
 
@@ -250,6 +241,7 @@ const MockInterview = () => {
       } catch (err) {
         console.warn('Backend finish call failed. Creating mock feedback reports.');
       }
+
 
       // Fallback mock feedback compiled in frontend
       await new Promise(r => setTimeout(r, 3000));

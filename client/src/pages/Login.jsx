@@ -36,6 +36,12 @@ const Login = () => {
       return;
     }
 
+    if (!isLogin && formData.password.length < 6) {
+      setFormErr('Password must be at least 6 characters long');
+      setLoading(false);
+      return;
+    }
+
     try {
       let success;
       if (isLogin) {
@@ -52,6 +58,7 @@ const Login = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <div style={{

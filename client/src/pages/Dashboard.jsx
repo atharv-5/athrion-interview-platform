@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  TrendingUp, 
-  Award, 
-  BookOpen, 
-  FileText, 
-  Play, 
-  ArrowRight, 
-  Sparkles, 
-  Activity, 
-  Plus 
+import { fetchWithAuth } from '../utils/api';
+import {
+  TrendingUp,
+  Award,
+  BookOpen,
+  FileText,
+  Play,
+  ArrowRight,
+  Sparkles,
+  Activity,
+  Plus,
+  Check
 } from 'lucide-react';
 
 const Dashboard = () => {
-  const { user, backendUrl } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [recentInterviews, setRecentInterviews] = useState([]);
@@ -22,13 +24,10 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      const token = localStorage.getItem('token');
       try {
-        const res = await fetch(`${backendUrl}/api/dashboard/stats`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth('/api/dashboard/stats');
         if (res.ok) {
-          const data = await res.ok ? await res.json() : null;
+          const data = await res.json();
           if (data) {
             setStats(data.stats);
             setRecentInterviews(data.recentInterviews || []);
@@ -39,7 +38,8 @@ const Dashboard = () => {
       } catch (err) {
         console.warn('Backend offline, loading mock dashboard statistics.');
       }
-      
+
+
       // Fallback Mock Data
       setTimeout(() => {
         setStats({
@@ -87,7 +87,8 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, [backendUrl]);
+  }, []);
+
 
   if (loading) {
     return (
@@ -104,13 +105,15 @@ const Dashboard = () => {
       {/* Decorative Blob */}
       <div className="glow-blob blob-primary" style={{ top: '-10%', right: '10%' }}></div>
 
-      {/* Header Summary */}
+      {/* Header Summary — score leads, greeting shrunk */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '6px' }}>
-            Welcome back, <span className="gradient-text">{user?.name || 'Practitioner'}</span>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '4px' }}>
+            Welcome back, {user?.name || 'Practitioner'}
+          </p>
+          <h1 className="data-text" style={{ fontSize: '2.25rem', fontWeight: 500, color: 'var(--primary)' }}>
+            {stats?.averageScore}% <span style={{ fontFamily: 'var(--font-sans)', fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: 400 }}>average readiness</span>
           </h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Here is your preparation overview. Ready for another mock session?</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button onClick={() => navigate('/resume')} className="btn btn-secondary">
@@ -132,7 +135,7 @@ const Dashboard = () => {
           </div>
           <div>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Avg Score</span>
-            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '4px 0 0 0' }}>{stats?.averageScore}%</h3>
+            <h3 className="data-text" style={{ fontSize: '1.75rem', fontWeight: 700, margin: '4px 0 0 0' }}>{stats?.averageScore}%</h3>
           </div>
         </div>
 
@@ -142,7 +145,7 @@ const Dashboard = () => {
           </div>
           <div>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Completed</span>
-            <h3 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '4px 0 0 0' }}>{stats?.interviewsCompleted} Sessions</h3>
+            <h3 className="data-text" style={{ fontSize: '1.75rem', fontWeight: 700, margin: '4px 0 0 0' }}>{stats?.interviewsCompleted} Sessions</h3>
           </div>
         </div>
 
@@ -168,30 +171,30 @@ const Dashboard = () => {
               <TrendingUp size={16} color="var(--accent-success)" /> Improving
             </span>
           </div>
-          
+
           {/* Custom SVG Line Graph */}
           <div style={{ width: '100%', height: '180px', position: 'relative' }}>
             <svg style={{ width: '100%', height: '100%', overflow: 'visible' }} viewBox="0 0 400 150">
               <defs>
                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4"/>
-                  <stop offset="100%" stopColor="var(--primary)" stopOpacity="0"/>
+                  <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
                 </linearGradient>
               </defs>
               {/* Grid Lines */}
-              <line x1="0" y1="25" x2="400" y2="25" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-              <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-              <line x1="0" y1="125" x2="400" y2="125" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
-              
+              <line x1="0" y1="25" x2="400" y2="25" stroke="rgba(75,46,43,0.06)" strokeWidth="1" />
+              <line x1="0" y1="75" x2="400" y2="75" stroke="rgba(75,46,43,0.06)" strokeWidth="1" />
+              <line x1="0" y1="125" x2="400" y2="125" stroke="rgba(75,46,43,0.06)" strokeWidth="1" />
+
               {/* The Line & Area */}
-              <path 
-                d="M 10,120 L 100,105 L 200,98 L 300,90 L 390,75 L 390,150 L 10,150 Z" 
+              <path
+                d="M 10,120 L 100,105 L 200,98 L 300,90 L 390,75 L 390,150 L 10,150 Z"
                 fill="url(#chartGradient)"
               />
-              <path 
-                d="M 10,120 L 100,105 L 200,98 L 300,90 L 390,75" 
-                fill="none" 
-                stroke="var(--primary)" 
+              <path
+                d="M 10,120 L 100,105 L 200,98 L 300,90 L 390,75"
+                fill="none"
+                stroke="var(--primary)"
                 strokeWidth="3"
                 strokeLinecap="round"
               />
@@ -201,9 +204,9 @@ const Dashboard = () => {
               <circle cx="100" cy="105" r="5" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2" />
               <circle cx="200" cy="98" r="5" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2" />
               <circle cx="300" cy="90" r="5" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2" />
-              <circle cx="390" cy="75" r="5" fill="var(--secondary)" stroke="var(--bg-primary)" strokeWidth="2" />
+              <circle cx="390" cy="75" r="6" fill="var(--primary)" stroke="var(--bg-primary)" strokeWidth="2" />
             </svg>
-            
+
             {/* Axis labels */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               <span>Session 1</span>
@@ -223,13 +226,13 @@ const Dashboard = () => {
               <div key={i}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
                   <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{skill.name}</span>
-                  <span style={{ color: '#ffffff', fontWeight: 600 }}>{skill.value}%</span>
+                  <span className="data-text" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{skill.value}%</span>
                 </div>
-                <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{ 
-                    height: '100%', 
-                    width: `${skill.value}%`, 
-                    background: i % 2 === 0 ? 'var(--primary-gradient)' : 'var(--secondary-gradient)',
+                <div style={{ height: '8px', background: 'rgba(75,46,43,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${skill.value}%`,
+                    background: 'var(--primary-gradient)',
                     borderRadius: '4px'
                   }}></div>
                 </div>
@@ -241,51 +244,37 @@ const Dashboard = () => {
 
       {/* Recommendations & Recent Activity */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
-        {/* Recent Interviews */}
+        {/* Recent Interviews — flat list style with checkmarks */}
         <div className="glass-panel" style={{ padding: '28px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Recent Mock Interviews</h3>
             <button onClick={() => navigate('/history')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
               View All <ArrowRight size={14} />
             </button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
             {recentInterviews.length > 0 ? (
               recentInterviews.map((session) => (
-                <div 
-                  key={session.id} 
+                <div
+                  key={session.id}
                   onClick={() => navigate(`/interview?session=${session.id}`)}
-                  className="glass-panel-hover"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}
+                  className="list-row"
+                  style={{ cursor: 'pointer' }}
                 >
-                  <div>
-                    <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '4px' }}>{session.role}</h4>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {session.type.toUpperCase()} • {session.difficulty}
-                    </span>
-                  </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      background: session.score >= 80 ? 'var(--accent-success-glow)' : 'var(--accent-warning-glow)',
-                      color: session.score >= 80 ? 'var(--accent-success)' : 'var(--accent-warning)',
-                      border: `1px solid ${session.score >= 80 ? 'var(--accent-success)' : 'var(--accent-warning)'}`,
-                      padding: '4px 8px',
-                      borderRadius: '8px',
-                      fontSize: '0.85rem',
-                      fontWeight: 700
-                    }}>
-                      {session.score}%
+                    <div className="check-circle">
+                      <Check size={13} strokeWidth={3} />
+                    </div>
+                    <div>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '2px' }}>{session.role}</h4>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {session.type.toUpperCase()} • {session.difficulty}
+                      </span>
                     </div>
                   </div>
+                  <span className="data-text" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    {session.score}%
+                  </span>
                 </div>
               ))
             ) : (
@@ -309,7 +298,7 @@ const Dashboard = () => {
               <div>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '4px' }}>Boost Communication Rating</h4>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  Your technical responses score highly, but communication can be polished. Try a **Behavioral Mock Interview** practicing STAR technique.
+                  Your technical responses score highly, but communication can be polished. Try a Behavioral Mock Interview practicing STAR technique.
                 </p>
               </div>
             </div>
@@ -321,13 +310,16 @@ const Dashboard = () => {
               <div>
                 <h4 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '4px' }}>Strengthen System Design</h4>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  Brush up on **Data Partitioning** and **Caching Strategy** which were identified as areas of improvement in your last session.
+                  Brush up on Data Partitioning and Caching Strategy which were identified as areas of improvement in your last session.
                 </p>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Spacer so the last row of cards always clears the floating dock */}
+      <div style={{ height: '40px' }}></div>
     </div>
   );
 };

@@ -6,20 +6,30 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_antigravity_token_key_12345';
+const getJwtSecret = () => process.env.JWT_SECRET || 'super_secret_antigravity_token_key_12345';
+const getJwtExpiresIn = () => process.env.JWT_EXPIRES_IN || '30d';
 
 const generateToken = (user) => {
   const id = user._id || user.id;
-  return jwt.sign({ id, name: user.name, email: user.email }, JWT_SECRET, {
-    expiresIn: '30d'
-  });
+  return jwt.sign(
+    { id, name: user.name, email: user.email }, 
+    getJwtSecret(), 
+    { expiresIn: getJwtExpiresIn() }
+  );
 };
 
 export const register = async (req, res) => {
-  const { name, email, password } = req.body;
+  let { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    return res.status(400).json({ message: 'Please provide name, email and password' });
+    return res.status(400).json({ message: 'Please provide name, email, and password' });
+  }
+
+  name = name.trim();
+  email = email.trim().toLowerCase();
+
+  if (password.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters long' });
   }
 
   const useLocal = process.env.USE_LOCAL_DB === 'true';
@@ -34,7 +44,7 @@ export const register = async (req, res) => {
     }
 
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists with this email' });
+      return res.status(400).json({ message: 'An account with this email already exists' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -59,6 +69,7 @@ export const register = async (req, res) => {
     const token = generateToken(newUser);
 
     res.status(201).json({
+      success: true,
       token,
       user: {
         id: newUser._id || newUser.id,
@@ -74,12 +85,13 @@ export const register = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: 'Please provide email and password' });
   }
 
+  email = email.trim().toLowerCase();
   const useLocal = process.env.USE_LOCAL_DB === 'true';
 
   try {
@@ -104,6 +116,7 @@ export const login = async (req, res) => {
     const token = generateToken(user);
 
     res.status(200).json({
+      success: true,
       token,
       user: {
         id: user._id || user.id,
@@ -136,6 +149,7 @@ export const getMe = async (req, res) => {
     }
 
     res.status(200).json({
+      success: true,
       user: {
         id: user._id || user.id,
         name: user.name,
@@ -147,3 +161,4 @@ export const getMe = async (req, res) => {
     res.status(500).json({ message: 'Server error retrieving profile' });
   }
 };
+
