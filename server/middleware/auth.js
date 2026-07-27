@@ -22,10 +22,9 @@ export const protect = async (req, res, next) => {
     return res.status(401).json({ message: 'Not authorized, invalid token format' });
   }
 
-  // Mock auth for local testing ONLY — impossible to trigger outside development,
-  // and requires an explicit opt-in flag, not just NODE_ENV, to reduce misconfig risk.
-  const mockAuthEnabled =
-    process.env.NODE_ENV !== 'production' && process.env.ALLOW_MOCK_AUTH === 'true';
+  // Mock auth for local testing ONLY — strictly disabled in production / non-development environments
+  const isDev = process.env.NODE_ENV === 'development';
+  const mockAuthEnabled = isDev && process.env.ALLOW_MOCK_AUTH === 'true';
 
   if (mockAuthEnabled && token.startsWith('user_mock_')) {
     req.user = {
