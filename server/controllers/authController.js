@@ -6,8 +6,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const getJwtSecret = () => process.env.JWT_SECRET || 'super_secret_antigravity_token_key_12345';
-const getJwtExpiresIn = () => process.env.JWT_EXPIRES_IN || '30d';
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is missing. Authentication cannot proceed.');
+  }
+  return secret;
+};
+const getJwtExpiresIn = () => process.env.JWT_EXPIRES_IN || '7d';
 
 const generateToken = (user) => {
   const id = user._id || user.id;

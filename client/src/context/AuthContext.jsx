@@ -92,8 +92,8 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn('Login error:', err.message);
-      // Fallback simulated login if server endpoint unreachable
-      if (err.message === 'Failed to fetch' && email && password) {
+      // Fallback simulated login if server endpoint unreachable (development only)
+      if (import.meta.env.DEV && err.message === 'Failed to fetch' && email && password) {
         const dummyToken = `user_mock_${Date.now()}`;
         const dummyUser = {
           id: 'user_mock_123',
@@ -107,7 +107,7 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
         return true;
       }
-      setError(err.message || 'Authentication failed');
+      setError(err.message === 'Failed to fetch' ? 'Unable to connect to authentication server.' : (err.message || 'Authentication failed'));
       setLoading(false);
       return false;
     }
@@ -133,9 +133,8 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message || 'Registration failed');
       }
     } catch (err) {
-
       console.warn('Registration error:', err.message);
-      if (err.message === 'Failed to fetch' && name && email) {
+      if (import.meta.env.DEV && err.message === 'Failed to fetch' && name && email) {
         const dummyToken = `user_mock_${Date.now()}`;
         const dummyUser = {
           id: 'user_mock_123',
@@ -149,7 +148,7 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
         return true;
       }
-      setError(err.message || 'Registration failed');
+      setError(err.message === 'Failed to fetch' ? 'Unable to connect to authentication server.' : (err.message || 'Registration failed'));
       setLoading(false);
       return false;
     }
