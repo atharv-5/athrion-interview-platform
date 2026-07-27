@@ -9,14 +9,29 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS
+// Enable CORS with strict environment checks
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (isProduction && (!process.env.CLIENT_URL || process.env.CLIENT_URL.trim() === '')) {
+  console.warn('⚠️ WARNING: CLIENT_URL environment variable is missing in production mode!');
+}
+
+const defaultDevOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'];
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map(url => url.trim())
-  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+  : (isProduction ? [] : defaultDevOrigins);
 
 app.use(cors({
-  origin: allowedOrigins,
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow non-browser requests (mobile apps, curl, server-to-server) or matching allowed origin
+    if (!origin || allowedOrigins.includes(origin) || (!isProduction && allowedOrigins.length === 0)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS policy violation: Origin ${origin} is not authorized`));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Body parsers
