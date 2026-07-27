@@ -82,3 +82,42 @@ export const checkInterviewLimit = async (req, res, next) => {
     next();
   }
 };
+
+// In-memory sliding window IP store for Auth Rate Limiting
+const authAttemptsMap = new Map();
+const AUTH_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const AUTH_MAX_ATTEMPTS = 10; // Max 10 attempts per 15 minutes per IP
+
+// Cleanup stale IPs every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of authAttemptsMap.entries()) {
+    if (now - data.resetTime > AUTH_WINDOW_MS) {
+      authAttemptsMap.delete(ip);
+    }
+  }
+}, 30 * 60 * 1000);
+
+export const checkAuthLimit = (req, res, next) => {
+  const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+
+  let record = authAttemptsMap.get(clientIp);
+
+  if (!record || (now - record.resetTime > AUTH_WINDOW_MS)) {
+    record = { count: 1, resetTime: now };
+    authAttemptsMap.set(clientIp, record);
+    return next();
+  }
+
+  record.count += 1;
+
+  if (record.count > AUTH_MAX_ATTEMPTS) {
+    const minutesLeft = Math.ceil((AUTH_WINDOW_MS - (now - record.resetTime)) / 60000);
+    return res.status(429).json({
+      message: `Too many authentication attempts from this IP address. Please try again in ${minutesLeft} minutes.`
+    });
+  }
+
+  next();
+};
