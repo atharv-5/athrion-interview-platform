@@ -115,8 +115,8 @@ An AI-powered full-stack platform that simulates real interview experiences — 
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ai-interview-platform.git
-cd ai-interview-platform
+git clone https://github.com/atharv-5/smart-resume-platform.git
+cd smart-resume-platform
 ```
 
 ### 2. Setup the Server
