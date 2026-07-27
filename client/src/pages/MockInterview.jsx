@@ -147,7 +147,13 @@ const MockInterview = () => {
         setInProgress(true);
         setTimeSpent(0);
       } else {
-        throw new Error('Failed to start interview');
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          alert(errData.message || 'Daily limit reached! You can start up to 4 mock interviews per day.');
+          setLoading(false);
+          return;
+        }
+        throw new Error(errData.message || 'Failed to start interview');
       }
     } catch (err) {
       console.warn('Backend failed. Generating mock interview questions.');

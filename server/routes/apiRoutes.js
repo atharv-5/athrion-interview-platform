@@ -5,6 +5,7 @@ import { uploadAndAnalyze, analyzeText, getLatestResume } from '../controllers/r
 import { startInterview, finishInterview, getInterviewDetails, getHistory } from '../controllers/interviewController.js';
 import { getDashboardStats } from '../controllers/dashboardController.js';
 import { protect } from '../middleware/auth.js';
+import { checkResumeLimit, checkInterviewLimit } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
@@ -20,12 +21,12 @@ router.post('/auth/login', login);
 router.get('/auth/me', protect, getMe);
 
 // Resume Endpoints
-router.post('/resumes/upload', protect, upload.single('resume'), uploadAndAnalyze);
-router.post('/resumes/analyze-text', protect, analyzeText);
+router.post('/resumes/upload', protect, checkResumeLimit, upload.single('resume'), uploadAndAnalyze);
+router.post('/resumes/analyze-text', protect, checkResumeLimit, analyzeText);
 router.get('/resumes/latest', protect, getLatestResume);
 
 // Interview Endpoints
-router.post('/interviews/start', protect, startInterview);
+router.post('/interviews/start', protect, checkInterviewLimit, startInterview);
 router.post('/interviews/:id/finish', protect, finishInterview);
 router.get('/interviews/history', protect, getHistory);
 router.get('/interviews/:id', protect, getInterviewDetails);

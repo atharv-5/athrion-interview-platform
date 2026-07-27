@@ -94,6 +94,11 @@ const ResumeAnalyzer = () => {
         
         if (res.ok) {
           data = await res.json();
+        } else if (res.status === 429) {
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.message || 'Daily limit reached! You can analyze up to 2 resumes per day.');
+          setLoading(false);
+          return;
         }
       } else {
         const res = await fetchWithAuth('/api/resumes/analyze-text', {
@@ -101,9 +106,13 @@ const ResumeAnalyzer = () => {
           body: JSON.stringify({ text: resumeText })
         });
 
-        
         if (res.ok) {
           data = await res.json();
+        } else if (res.status === 429) {
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.message || 'Daily limit reached! You can analyze up to 2 resumes per day.');
+          setLoading(false);
+          return;
         }
       }
 
