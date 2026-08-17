@@ -194,6 +194,58 @@ const FeedbackPage = () => {
         </div>
       </div>
 
+      {/* Question Scorecard Summary */}
+      {feedback.qaFeedback && feedback.qaFeedback.length > 0 && (
+        <div className="glass-panel" style={{ padding: '24px 28px', marginBottom: '32px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle size={18} color="var(--primary)" /> Question Scorecard
+          </h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+            {feedback.qaFeedback.map((item, idx) => {
+              const isCorrect = item.rating >= 7;
+              return (
+                <div
+                  key={idx}
+                  onClick={() => setOpenQuestionIdx(idx)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    background: isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    border: `1.5px solid ${isCorrect ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                    color: isCorrect ? 'var(--accent-success)' : 'var(--accent-danger)',
+                    fontWeight: 700,
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  {isCorrect ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                  Q{idx + 1} {isCorrect ? '✓' : '✗'}
+                </div>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            <span style={{ color: 'var(--accent-success)', fontWeight: 800 }}>
+              {feedback.qaFeedback.filter(q => q.rating >= 7).length}
+            </span>
+            {' '}out of{' '}
+            <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>
+              {feedback.qaFeedback.length}
+            </span>
+            {' '}answered correctly
+            {feedback.qaFeedback.filter(q => q.rating < 7).length > 0 && (
+              <span style={{ marginLeft: '12px', color: 'var(--accent-danger)' }}>
+                • {feedback.qaFeedback.filter(q => q.rating < 7).length} need improvement
+              </span>
+            )}
+          </p>
+        </div>
+      )}
+
       {/* Main Content Split */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 3fr))', gap: '32px' }}>
         
@@ -228,7 +280,9 @@ const FeedbackPage = () => {
                     width: '28px',
                     height: '28px',
                     borderRadius: '50%',
-                    background: 'var(--bg-tertiary)',
+                    background: item.rating >= 7 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                    border: `1.5px solid ${item.rating >= 7 ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)'}`,
+                    color: item.rating >= 7 ? 'var(--accent-success)' : 'var(--accent-danger)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -236,7 +290,7 @@ const FeedbackPage = () => {
                     fontSize: '0.85rem',
                     flexShrink: 0
                   }}>
-                    {idx + 1}
+                    {item.rating >= 7 ? '✓' : '✗'}
                   </span>
                   <p style={{ fontWeight: 600, fontSize: '0.95rem', margin: 0, textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '450px', color: 'var(--text-primary)' }}>
                     {item.question}
@@ -262,6 +316,28 @@ const FeedbackPage = () => {
               {openQuestionIdx === idx && (
                 <div style={{ padding: '24px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '20px', background: 'rgba(10, 10, 10, 0.3)' }}>
                   
+                  {/* Verdict Banner */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px 18px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    background: item.rating >= 7 
+                      ? 'rgba(16, 185, 129, 0.1)' 
+                      : 'rgba(239, 68, 68, 0.1)',
+                    border: `1.5px solid ${item.rating >= 7 
+                      ? 'rgba(16, 185, 129, 0.35)' 
+                      : 'rgba(239, 68, 68, 0.35)'}`,
+                    color: item.rating >= 7 ? 'var(--accent-success)' : 'var(--accent-danger)'
+                  }}>
+                    {item.rating >= 7 
+                      ? <><CheckCircle size={18} /> Strong Answer — You demonstrated solid understanding</>
+                      : <><XCircle size={18} /> Needs Improvement — Review the model answer below</>}
+                  </div>
+
                   {/* Your Answer */}
                   <div>
                     <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '8px' }}>Your Answer</h4>
@@ -291,17 +367,31 @@ const FeedbackPage = () => {
                     </div>
                   </div>
 
-                  {/* Model Answer */}
-                  <div>
-                    <h4 style={{ fontSize: '0.85rem', color: 'var(--secondary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '8px' }}>Recommended Model Answer Structure</h4>
+                  {/* Model Answer — enhanced for incorrect */}
+                  <div style={{
+                    borderLeft: item.rating < 7 ? '4px solid var(--accent-danger)' : 'none',
+                    paddingLeft: item.rating < 7 ? '16px' : '0'
+                  }}>
+                    <h4 style={{ 
+                      fontSize: item.rating < 7 ? '0.9rem' : '0.85rem', 
+                      color: item.rating < 7 ? 'var(--accent-danger)' : 'var(--secondary)', 
+                      fontWeight: 700, 
+                      textTransform: 'uppercase', 
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      {item.rating < 7 ? '💡 Here\'s what a strong answer looks like:' : 'Recommended Model Answer Structure'}
+                    </h4>
                     <p style={{ 
-                      fontSize: '0.9rem', 
+                      fontSize: item.rating < 7 ? '0.95rem' : '0.9rem', 
                       color: 'var(--text-primary)', 
-                      lineHeight: 1.5, 
-                      background: 'rgba(20, 20, 20, 0.5)', 
-                      padding: '16px', 
-                      border: '1px solid var(--border-color)', 
-                      borderRadius: '8px',
+                      lineHeight: 1.6, 
+                      background: item.rating < 7 ? 'rgba(239, 68, 68, 0.04)' : 'rgba(20, 20, 20, 0.5)', 
+                      padding: item.rating < 7 ? '20px' : '16px', 
+                      border: item.rating < 7 ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid var(--border-color)', 
+                      borderRadius: '10px',
                       fontFamily: 'var(--font-sans)'
                     }}>
                       {item.modelAnswer}

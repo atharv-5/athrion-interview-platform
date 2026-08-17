@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchWithAuth } from '../utils/api';
+import { companyGroups, companyQuestions } from '../data/pyqData';
 import { 
   Play, 
   MessageSquare, 
@@ -13,7 +14,9 @@ import {
   ChevronRight, 
   Award, 
   ArrowRight,
-  Terminal
+  Terminal,
+  Building2,
+  Target
 } from 'lucide-react';
 
 const MockInterview = () => {
@@ -28,6 +31,11 @@ const MockInterview = () => {
   const [difficulty, setDifficulty] = useState('Medium');
   const [type, setType] = useState('technical');
   const [numQuestions, setNumQuestions] = useState(3);
+
+  // Company Mode State
+  const [mode, setMode] = useState('normal'); // 'normal' | 'company'
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [companyType, setCompanyType] = useState('technical');
   
   // Running State
   const [inProgress, setInProgress] = useState(false);
@@ -128,7 +136,57 @@ const MockInterview = () => {
     }
   };
 
+  // Start company interview from PYQ data
+  const startCompanyInterview = () => {
+    if (!selectedCompany) {
+      alert('Please select a company first.');
+      return;
+    }
+
+    const companyData = companyQuestions[selectedCompany];
+    if (!companyData) return;
+
+    setLoading(true);
+    setLoadingMsg(`Loading ${selectedCompany} interview questions...`);
+
+    // Gather questions for the selected category (fallback to all if category is empty)
+    let pool = [];
+    const categoryKey = companyType === 'behavioral-star' ? 'behavioral' : companyType;
+    if (companyData.questions[categoryKey]) {
+      pool = companyData.questions[categoryKey];
+    }
+    // If not enough questions in category, pull from all categories
+    if (pool.length < numQuestions) {
+      const allQuestions = Object.values(companyData.questions).flat();
+      pool = allQuestions;
+    }
+
+    // Shuffle and pick
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    const picked = shuffled.slice(0, Math.min(numQuestions, shuffled.length));
+    const questionTexts = picked.map(q => q.question);
+
+    setTimeout(() => {
+      setQuestions(questionTexts);
+      setRole(selectedCompany);
+      setDifficulty('Company-Level');
+      setType(companyType);
+      setSessionId(`session_company_${Date.now()}`);
+      setCurrentIdx(0);
+      setAnswers([]);
+      setInProgress(true);
+      setTimeSpent(0);
+      setLoading(false);
+    }, 1200);
+  };
+
   const startInterview = async () => {
+    // If company mode, use PYQ data
+    if (mode === 'company') {
+      startCompanyInterview();
+      return;
+    }
+
     setLoading(true);
     setLoadingMsg('AI is designing customized questions for your profile...');
     
@@ -273,7 +331,7 @@ const MockInterview = () => {
         qaFeedback: updatedAnswers.map((item, idx) => ({
           question: item.question,
           answer: item.answer,
-          rating: Math.floor(Math.random() * 4) + 6, // 6 to 9
+          rating: Math.floor(Math.random() * 5) + 5, // 5 to 9 — ensures some clearly incorrect results
           positives: 'Answered the core components directly. Solid usage of technical terms.',
           improvements: 'Could elaborate more on exact architecture trade-offs. Include a brief concrete example.',
           modelAnswer: `For question "${item.question}", a stellar answer would clearly define the key architectures, explicitly contrast trade-offs (e.g. latency vs database writes), and walk through a production scale scenario showing error handling.`
@@ -320,90 +378,283 @@ const MockInterview = () => {
         </div>
       ) : !inProgress ? (
         // Settings Mode
-        <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           <div style={{ marginBottom: '32px', textAlign: 'center' }}>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: '6px' }}>
               Configure <span className="gradient-text">Mock Interview</span>
             </h1>
-            <p style={{ color: 'var(--text-secondary)' }}>Configure parameters below to generate an automated AI-simulated interview.</p>
+            <p style={{ color: 'var(--text-secondary)' }}>Choose your interview style and configure parameters below.</p>
           </div>
 
-          <div className="glass-panel" style={{ padding: '32px' }}>
-            <form onSubmit={(e) => { e.preventDefault(); startInterview(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
-              <div className="form-group">
-                <label className="form-label">Target Role / Job Title</label>
-                <input 
-                  type="text" 
-                  value={role} 
-                  onChange={(e) => setRole(e.target.value)} 
-                  className="form-input" 
-                  placeholder="e.g. Senior React Developer"
-                  required
-                />
-              </div>
+          {/* Mode Toggle Tabs */}
+          <div style={{ display: 'flex', gap: '0', marginBottom: '24px', background: 'var(--bg-secondary)', borderRadius: '14px', padding: '4px', border: '1px solid var(--border-color)' }}>
+            <button
+              type="button"
+              onClick={() => setMode('normal')}
+              style={{
+                flex: 1,
+                padding: '14px 20px',
+                borderRadius: '11px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                transition: 'all 0.25s ease',
+                background: mode === 'normal' ? 'var(--primary-gradient)' : 'transparent',
+                color: mode === 'normal' ? '#FFF8F0' : 'var(--text-muted)',
+                boxShadow: mode === 'normal' ? '0 4px 15px rgba(0,0,0,0.2)' : 'none'
+              }}
+            >
+              <Target size={18} />
+              Normal Interview
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('company')}
+              style={{
+                flex: 1,
+                padding: '14px 20px',
+                borderRadius: '11px',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                transition: 'all 0.25s ease',
+                background: mode === 'company' ? 'var(--primary-gradient)' : 'transparent',
+                color: mode === 'company' ? '#FFF8F0' : 'var(--text-muted)',
+                boxShadow: mode === 'company' ? '0 4px 15px rgba(0,0,0,0.2)' : 'none'
+              }}
+            >
+              <Building2 size={18} />
+              Company Interview
+            </button>
+          </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          {mode === 'normal' ? (
+            /* ── Normal Mode Form ── */
+            <div className="glass-panel" style={{ padding: '32px' }}>
+              <form onSubmit={(e) => { e.preventDefault(); startInterview(); }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                
                 <div className="form-group">
-                  <label className="form-label">Interview Domain</label>
-                  <select 
-                    value={type} 
-                    onChange={(e) => setType(e.target.value)} 
-                    className="form-input"
-                    style={{ background: 'var(--bg-primary)' }}
-                  >
-                    <option value="technical">Technical (Coding & Concepts)</option>
-                    <option value="system-design">System Design</option>
-                    <option value="behavioral">Behavioral (General)</option>
-                    <option value="behavioral-star">Behavioral (STAR Method)</option>
-                  </select>
+                  <label className="form-label">Target Role / Job Title</label>
+                  <input 
+                    type="text" 
+                    value={role} 
+                    onChange={(e) => setRole(e.target.value)} 
+                    className="form-input" 
+                    placeholder="e.g. Senior React Developer"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Interview Domain</label>
+                    <select 
+                      value={type} 
+                      onChange={(e) => setType(e.target.value)} 
+                      className="form-input"
+                      style={{ background: 'var(--bg-primary)' }}
+                    >
+                      <option value="technical">Technical (Coding & Concepts)</option>
+                      <option value="system-design">System Design</option>
+                      <option value="behavioral">Behavioral (General)</option>
+                      <option value="behavioral-star">Behavioral (STAR Method)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Difficulty Level</label>
+                    <select 
+                      value={difficulty} 
+                      onChange={(e) => setDifficulty(e.target.value)} 
+                      className="form-input"
+                      style={{ background: 'var(--bg-primary)' }}
+                    >
+                      <option value="Easy">Easy (Entry level)</option>
+                      <option value="Medium">Medium (Mid level)</option>
+                      <option value="Hard">Hard (Senior / Lead)</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Difficulty Level</label>
-                  <select 
-                    value={difficulty} 
-                    onChange={(e) => setDifficulty(e.target.value)} 
-                    className="form-input"
-                    style={{ background: 'var(--bg-primary)' }}
-                  >
-                    <option value="Easy">Easy (Entry level)</option>
-                    <option value="Medium">Medium (Mid level)</option>
-                    <option value="Hard">Hard (Senior / Lead)</option>
-                  </select>
+                  <label className="form-label">Number of Questions ({numQuestions})</label>
+                  <input 
+                    type="range" 
+                    min="2" 
+                    max="6" 
+                    value={numQuestions} 
+                    onChange={(e) => setNumQuestions(parseInt(e.target.value))} 
+                    style={{
+                      accentColor: 'var(--primary)',
+                      background: 'var(--bg-primary)',
+                      height: '6px',
+                      borderRadius: '4px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    <span>2 questions (Quick)</span>
+                    <span>6 questions (Deep)</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label className="form-label">Number of Questions ({numQuestions})</label>
-                <input 
-                  type="range" 
-                  min="2" 
-                  max="6" 
-                  value={numQuestions} 
-                  onChange={(e) => setNumQuestions(parseInt(e.target.value))} 
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px', marginTop: '10px' }}>
+                  <Play size={18} />
+                  <span>Initialize AI Session</span>
+                </button>
+
+              </form>
+            </div>
+          ) : (
+            /* ── Company Mode Form ── */
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+              {/* Company Selector Grid – grouped */}
+              {companyGroups.map((group) => (
+                <div key={group.name} className="glass-panel" style={{ padding: '24px' }}>
+                  <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '16px' }}>
+                    {group.name}
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px' }}>
+                    {group.companies.map((companyName) => {
+                      const data = companyQuestions[companyName];
+                      const isSelected = selectedCompany === companyName;
+                      return (
+                        <button
+                          key={companyName}
+                          type="button"
+                          onClick={() => setSelectedCompany(companyName)}
+                          className="company-card"
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '16px 12px',
+                            borderRadius: '12px',
+                            border: isSelected ? `2px solid ${data?.color || 'var(--primary)'}` : '1px solid var(--border-color)',
+                            background: isSelected ? `${data?.color || 'var(--primary)'}15` : 'rgba(255,255,255,0.01)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            color: 'var(--text-primary)',
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                            boxShadow: isSelected ? `0 0 20px ${data?.color || 'var(--primary)'}25` : 'none'
+                          }}
+                        >
+                          <img src={data?.logo} alt={companyName} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'contain', background: '#fff', padding: '3px' }} />
+                          <span style={{ textAlign: 'center', lineHeight: 1.2 }}>{companyName}</span>
+                          {isSelected && (
+                            <span style={{
+                              width: '8px', height: '8px', borderRadius: '50%',
+                              background: data?.color || 'var(--primary)',
+                              boxShadow: `0 0 8px ${data?.color || 'var(--primary)'}`,
+                              marginTop: '2px'
+                            }}></span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* Company Config Options */}
+              <div className="glass-panel" style={{ padding: '28px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Interview Category</label>
+                    <select
+                      value={companyType}
+                      onChange={(e) => setCompanyType(e.target.value)}
+                      className="form-input"
+                      style={{ background: 'var(--bg-primary)' }}
+                    >
+                      <option value="technical">Technical (Coding & Concepts)</option>
+                      <option value="system-design">System Design</option>
+                      <option value="behavioral">Behavioral</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Number of Questions ({numQuestions})</label>
+                    <input 
+                      type="range" 
+                      min="2" 
+                      max="6" 
+                      value={numQuestions} 
+                      onChange={(e) => setNumQuestions(parseInt(e.target.value))} 
+                      style={{
+                        accentColor: selectedCompany ? (companyQuestions[selectedCompany]?.color || 'var(--primary)') : 'var(--primary)',
+                        background: 'var(--bg-primary)',
+                        height: '6px',
+                        borderRadius: '4px',
+                        outline: 'none',
+                        cursor: 'pointer',
+                        marginTop: '8px'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Selected company info */}
+                {selectedCompany && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    padding: '14px 18px', borderRadius: '10px', marginBottom: '20px',
+                    background: `${companyQuestions[selectedCompany]?.color || 'var(--primary)'}12`,
+                    border: `1px solid ${companyQuestions[selectedCompany]?.color || 'var(--primary)'}30`
+                  }}>
+                    <img src={companyQuestions[selectedCompany]?.logo} alt={selectedCompany} style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'contain', background: '#fff', padding: '2px' }} />
+                    <div>
+                      <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{selectedCompany}</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                        {(() => {
+                          const catKey = companyType === 'behavioral-star' ? 'behavioral' : companyType;
+                          const count = companyQuestions[selectedCompany]?.questions?.[catKey]?.length || 0;
+                          return `${count} ${companyType} questions available`;
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={startCompanyInterview}
+                  className="btn btn-primary"
+                  disabled={!selectedCompany}
                   style={{
-                    accentColor: 'var(--primary)',
-                    background: 'var(--bg-primary)',
-                    height: '6px',
-                    borderRadius: '4px',
-                    outline: 'none',
-                    cursor: 'pointer'
+                    width: '100%', padding: '14px', fontWeight: 700,
+                    opacity: selectedCompany ? 1 : 0.5,
+                    background: selectedCompany ? `linear-gradient(135deg, ${companyQuestions[selectedCompany]?.color || 'var(--primary)'}, var(--primary))` : undefined
                   }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  <span>2 questions (Quick)</span>
-                  <span>6 questions (Deep)</span>
-                </div>
+                >
+                  <Building2 size={18} />
+                  <span>{selectedCompany ? `Start ${selectedCompany} Interview` : 'Select a Company First'}</span>
+                </button>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px', marginTop: '10px' }}>
-                <Play size={18} />
-                <span>Initialize AI Session</span>
-              </button>
-
-            </form>
-          </div>
+              {/* Company card hover styles */}
+              <style>{`
+                .company-card:hover {
+                  transform: translateY(-2px);
+                  box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+                }
+              `}</style>
+            </div>
+          )}
         </div>
       ) : (
         // Active Q&A Interface
