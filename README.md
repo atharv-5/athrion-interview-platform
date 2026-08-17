@@ -19,9 +19,14 @@ An AI-powered full-stack platform that simulates real interview experiences — 
 
 ## ✨ Features
 
-### 🎤 AI Mock Interviews
-- Configure interviews by **role**, **difficulty** (Easy / Medium / Hard), and **domain** (Technical, System Design, Behavioral, STAR Method)
-- AI generates **2–6 customized questions** tailored to your target position
+### 🎤 AI Mock & Company-Specific Interviews
+- **Two Interview Modes**: Toggle between **Normal Interview** (custom role, difficulty, domain) and **Company Interview** (past interview questions from top firms)
+- **15 Target Companies** across 3 categories with authentic brand logos:
+  - **Technical Firms**: Google, Amazon, Meta, Apple, Netflix, Microsoft, Oracle
+  - **Big 4**: Deloitte, PwC, EY, KPMG
+  - **Consultancy**: McKinsey, BCG, Bain & Company, Accenture
+- **270+ Curated PYQs**: Exactly 6 questions per category (Technical, Behavioral, System Design) for every company with sample answers
+- Configure **2–6 questions** per session
 - Built-in **speech-to-text** — answer questions by voice using the Web Speech API
 - Real-time **session timer** and **progress tracking** during the interview
 
@@ -30,11 +35,13 @@ An AI-powered full-stack platform that simulates real interview experiences — 
 - AI extracts **core skills**, identifies **strengths**, highlights **skill gaps**, and recommends **target roles**
 - One-click transition from analysis → start a mock interview for any recommended role
 
-### 📊 AI-Powered Feedback & Scoring
-- **Overall performance score** with animated circular progress visualization
-- **Category breakdown** — Technical Depth, Problem Solving, Communication, Structured Delivery
-- **Per-question analysis** with your answer, key strengths, areas to improve, and a model answer
-- **Personalized learning suggestions** with specific resources and topics to study
+### 📊 AI-Powered Feedback, Scoring & Per-Question Verdicts
+- **Interactive Question Scorecard**: Instant visual pills (`Q1 ✓`, `Q2 ✗`) showing exact correct vs incorrect answer count
+- **Per-Question Verdict Banners**: Clear visual indicators (`✓ Strong Answer` vs `✗ Needs Improvement`) for each response
+- **Highlighted Model Answers**: Elevated styling for incorrect answers providing *"💡 Here's what a strong answer looks like:"*
+- **Overall Performance Score** with animated circular progress visualization
+- **Rubric Category Breakdown** — Technical Depth, Problem Solving, Communication, Structured Delivery
+- **Personalized Learning Suggestions** with specific resources and topics to study
 
 ### 📈 Dashboard & Analytics
 - Performance overview with **average readiness score**
@@ -43,7 +50,7 @@ An AI-powered full-stack platform that simulates real interview experiences — 
 - **Smart suggestions** — AI-driven recommendations to improve weak areas
 
 ### 📜 Interview History
-- Full history table of all completed sessions with role, domain, difficulty, date, duration, and score
+- Full history table of all completed sessions with role/company, domain, difficulty, date, duration, and score
 - Click any session to review detailed feedback
 - Delete sessions from history
 
@@ -179,17 +186,21 @@ Navigate to **http://localhost:5173** in your browser.
 ```
 ai-interview-platform/
 ├── client/                      # React Frontend (Vite)
+│   ├── public/
+│   │   └── logos/               # Brand logos for 15 companies
 │   ├── src/
 │   │   ├── components/
 │   │   │   └── Dock.jsx         # Bottom navigation dock
 │   │   ├── context/
 │   │   │   └── AuthContext.jsx  # Auth state management
+│   │   ├── data/
+│   │   │   └── pyqData.js       # Curated 270+ PYQ dataset & company metadata
 │   │   ├── pages/
 │   │   │   ├── Dashboard.jsx    # Main dashboard with analytics
 │   │   │   ├── Login.jsx        # Auth (login + register)
-│   │   │   ├── MockInterview.jsx # AI interview session
+│   │   │   ├── MockInterview.jsx # AI & Company interview sessions
 │   │   │   ├── ResumeAnalyzer.jsx # Resume upload & analysis
-│   │   │   ├── FeedbackPage.jsx # Detailed score & feedback
+│   │   │   ├── FeedbackPage.jsx # Detailed score & per-question verdicts
 │   │   │   └── History.jsx      # Past interview sessions
 │   │   ├── utils/
 │   │   │   └── api.js           # API client with auth headers
